@@ -7,6 +7,9 @@
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file append and delete.</Description>
     <PackageTags>CloudStorage, Storage, Files, FileOperations</PackageTags>
+    <PackageProjectUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
