@@ -143,7 +143,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath"></param>
         /// <param name="contents"></param>
         /// <returns></returns>
-        Task UpdateFileAsync(string subpath, Stream contents);
+        Task UpdateFileAsync(string subpath, UpdateFileMode mode, Stream contents);
 
         /// <summary>
         /// Updates a file with the specified contents
@@ -151,7 +151,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath"></param>
         /// <param name="contents"></param>
         /// <returns></returns>
-        void UpdateFile(string subpath, Stream contents);
+        void UpdateFile(string subpath, UpdateFileMode mode, Stream contents);
 
         /// <summary>
         /// Updates a file with the specified contents
@@ -159,7 +159,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath"></param>
         /// <param name="contents"></param>
         /// <returns></returns>
-        void UpdateFile(Stream contents, params string[] pathSegments);
+        void UpdateFile(Stream contents, UpdateFileMode mode, params string[] pathSegments);
 
         /// <summary>
         /// Updates a file with the specified contents
@@ -167,7 +167,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath"></param>
         /// <param name="contents"></param>
         /// <returns></returns>
-        Task UpdateFileAsync(Stream contents, params string[] pathSegments);
+        Task UpdateFileAsync(Stream contents, UpdateFileMode mode, params string[] pathSegments);
 
         /// <summary>
         /// Updates a file with the specified contents
@@ -175,7 +175,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath"></param>
         /// <param name="contents"></param>
         /// <returns></returns>
-        void UpdateFile(Stream contents, IFileInfo file);
+        void UpdateFile(Stream contents, UpdateFileMode mode, IFileInfo file);
 
         /// <summary>
         /// Updates a file with the specified contents
@@ -183,61 +183,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath"></param>
         /// <param name="contents"></param>
         /// <returns></returns>
-        Task UpdateFileAsync(Stream contents, IFileInfo file);
-
-        /// <summary>
-        /// Upload the file in chunks - appends to an existing file upload with the specified contents
-        /// If the file does not exist, it creates one
-        /// </summary>
-        /// <param name="subpath"></param>
-        /// <param name="contents"></param>
-        /// <returns></returns>
-        Task AppendFileAsync(string subpath, Stream contents);
-
-        /// <summary>
-        /// Upload the file in chunks - appends to an existing file upload with the specified contents
-        /// If the file does not exist, it creates one
-        /// </summary>
-        /// <param name="subpath"></param>
-        /// <param name="contents"></param>
-        /// <returns></returns>
-        void AppendFile(string subpath, Stream contents);
-
-        /// <summary>
-        /// Upload the file in chunks - appends to an existing file upload with the specified contents
-        /// If the file does not exist, it creates one
-        /// </summary>
-        /// <param name="subpath"></param>
-        /// <param name="contents"></param>
-        /// <returns></returns>
-        void AppendFile(Stream contents, params string[] pathSegments);
-
-        /// <summary>
-        /// Upload the file in chunks - appends to an existing file upload with the specified contents
-        /// If the file does not exist, it creates one
-        /// </summary>
-        /// <param name="subpath"></param>
-        /// <param name="contents"></param>
-        /// <returns></returns>
-        Task AppendFileAsync(Stream contents, params string[] pathSegments);
-
-        /// <summary>
-        /// Upload the file in chunks - appends to an existing file upload with the specified contents
-        /// If the file does not exist, it creates one
-        /// </summary>
-        /// <param name="subpath"></param>
-        /// <param name="contents"></param>
-        /// <returns></returns>
-        void AppendFile(Stream contents, IFileInfo file);
-
-        /// <summary>
-        /// Upload the file in chunks - appends to an existing file upload with the specified contents
-        /// If the file does not exist, it creates one
-        /// </summary>
-        /// <param name="subpath"></param>
-        /// <param name="contents"></param>
-        /// <returns></returns>
-        Task AppendFileAsync(Stream contents, IFileInfo file);
+        Task UpdateFileAsync(Stream contents, UpdateFileMode mode, IFileInfo file);
 
         /// <summary>
         /// Deletes a file or directory. The delete is recursive for directories
@@ -334,6 +280,46 @@ namespace Cloud.File.Storage.Manager.Common
         /// <returns>The file stream</returns>
         /// <exception cref="System.IO.FileNotFoundException"></exception>
         LocalFileStream CreateLocalFileStream(bool readOnly, IFileInfo file);
+
+        /// <summary>
+        /// Moves a file from an old destination to a new one
+        /// </summary>
+        /// <param name="oldFileSegments"></param>
+        /// <param name="newFileSegments"></param>
+        /// <returns></returns>
+        void Move(string[] oldFileSegments, string[] newFileSegments);
+
+        /// <summary>
+        /// Moves a file from an old destination to a new one
+        /// </summary>
+        /// <returns></returns>
+        void Move(string oldPath, string newPath);
+
+        /// <summary>
+        /// Moves a file from an old destination to a new one
+        /// </summary>
+        /// <returns></returns>
+        void Move(IFileInfo file, string[] newFileSegments);
+
+        /// <summary>
+        /// Moves a file from an old destination to a new one
+        /// </summary>
+        /// <param name="oldFileSegments"></param>
+        /// <param name="newFileSegments"></param>
+        /// <returns></returns>
+        Task MoveAsync(string[] oldFileSegments, string[] newFileSegments);
+
+        /// <summary>
+        /// Moves a file from an old destination to a new one
+        /// </summary>
+        /// <returns></returns>
+        Task MoveAsync(string oldPath, string newPath);
+
+        /// <summary>
+        /// Moves a file from an old destination to a new one
+        /// </summary>
+        /// <returns></returns>
+        Task MoveAsync(IFileInfo file, string[] newFileSegments);
 
         /// <summary>
         /// The callback called when a local file stream is closed. Used to commit the contents of a local stream

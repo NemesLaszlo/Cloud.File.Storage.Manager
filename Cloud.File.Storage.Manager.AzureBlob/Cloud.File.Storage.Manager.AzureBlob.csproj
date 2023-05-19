@@ -5,12 +5,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>NemesLaszlo</Authors>
-    <Description>Provides complete implementation to handle easily cloud file storage operations for Azure Blob Storage like get informations about files, reading, downloadURL generation, file update, file append and delete.</Description>
+    <Description>Provides complete implementation to handle easily cloud file storage operations for Azure Blob Storage like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
     <PackageProjectUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</PackageProjectUrl>
     <RepositoryUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Azure-Blob, Azure-Blob-Storage, Azure</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Version>2.0.0</Version>
+    <PackageReleaseNotes>- Switch to Azure.Storage.Blobs
+- Remove the append option
+- Add Move option
+- Add Custom AzureFileStream 
+- Update Cloud.File.Storage.Manager.Common 1.0.0 -&gt; 2.0.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,8 +27,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
-	<PackageReference Include="Cloud.File.Storage.Manager.Common" Version="1.0.0" />
+	<PackageReference Include="Azure.Storage.Blobs" Version="12.16.0" />
+	<PackageReference Include="Cloud.File.Storage.Manager.Common" Version="2.0.0" />
   </ItemGroup>
 
 </Project>

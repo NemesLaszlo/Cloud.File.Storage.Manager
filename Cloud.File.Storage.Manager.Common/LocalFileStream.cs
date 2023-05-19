@@ -1,5 +1,4 @@
-﻿
-namespace Cloud.File.Storage.Manager.Common
+﻿namespace Cloud.File.Storage.Manager.Common
 {
     public class LocalFileStream : Stream
     {

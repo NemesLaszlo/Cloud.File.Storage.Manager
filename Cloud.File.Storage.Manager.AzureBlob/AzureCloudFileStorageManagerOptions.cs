@@ -4,7 +4,8 @@ namespace Cloud.File.Storage.Manager.AzureBlob
 {
     public class AzureCloudFileStorageManagerOptions : FileProviderOptions
     {
-        public string ConnectionString { get; set; }
+        public string AccountName { get; set; }
+        public string AccountKey { get; set; }
         public string ContainerName { get; set; }
     }
 }

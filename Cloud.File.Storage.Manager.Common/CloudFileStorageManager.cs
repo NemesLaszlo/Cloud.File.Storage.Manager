@@ -139,75 +139,39 @@ namespace Cloud.File.Storage.Manager.Common
 
 
 
-        protected abstract Task updateFileAsync(Stream contents, params string[] absolutePathSegments);
+        protected abstract Task updateFileAsync(Stream contents, UpdateFileMode mode, params string[] absolutePathSegments);
 
-        public async Task UpdateFileAsync(Stream contents, params string[] pathSegments)
+        public async Task UpdateFileAsync(Stream contents, UpdateFileMode mode, params string[] pathSegments)
         {
-            await updateFileAsync(contents, getAbsoluteSegments(pathSegments));
+            await updateFileAsync(contents, mode, getAbsoluteSegments(pathSegments));
         }
 
-        public void UpdateFile(Stream contents, IFileInfo file)
+        public void UpdateFile(Stream contents, UpdateFileMode mode, IFileInfo file)
         {
-            UpdateFile(contents, fileSegments(file));
+            UpdateFile(contents, mode, fileSegments(file));
         }
 
-        public async Task UpdateFileAsync(Stream contents, IFileInfo file)
+        public async Task UpdateFileAsync(Stream contents, UpdateFileMode mode, IFileInfo file)
         {
-            await UpdateFileAsync(contents, fileSegments(file));
+            await UpdateFileAsync(contents, mode, fileSegments(file));
         }
 
-        public async Task UpdateFileAsync(string subpath, Stream contents)
-        {
-            var normalizedPath = normalizePath(subpath);
-            await UpdateFileAsync(contents, normalizedPath);
-        }
-
-        public void UpdateFile(string subpath, Stream contents)
+        public async Task UpdateFileAsync(string subpath, UpdateFileMode mode, Stream contents)
         {
             var normalizedPath = normalizePath(subpath);
-            UpdateFile(contents, normalizedPath);
+            await UpdateFileAsync(contents, mode, normalizedPath);
         }
 
-        public void UpdateFile(Stream contents, params string[] pathSegments)
-        {
-            RunTaskSerial(UpdateFileAsync(contents, pathSegments));
-        }
-
-
-        protected abstract Task<long> appendFileAsync(Stream contents, params string[] absolutePathSegments);
-
-        public async Task AppendFileAsync(Stream contents, params string[] pathSegments)
-        {
-            await appendFileAsync(contents, getAbsoluteSegments(pathSegments));
-        }
-
-        public void AppendFile(Stream contents, IFileInfo file)
-        {
-            AppendFile(contents, fileSegments(file));
-        }
-
-        public async Task AppendFileAsync(Stream contents, IFileInfo file)
-        {
-            await AppendFileAsync(contents, fileSegments(file));
-        }
-
-        public async Task AppendFileAsync(string subpath, Stream contents)
+        public void UpdateFile(string subpath, UpdateFileMode mode, Stream contents)
         {
             var normalizedPath = normalizePath(subpath);
-            await AppendFileAsync(contents, normalizedPath);
+            UpdateFile(contents, mode, normalizedPath);
         }
 
-        public void AppendFile(string subpath, Stream contents)
+        public void UpdateFile(Stream contents, UpdateFileMode mode, params string[] pathSegments)
         {
-            var normalizedPath = normalizePath(subpath);
-            AppendFile(contents, normalizedPath);
+            RunTaskSerial(UpdateFileAsync(contents, mode, pathSegments));
         }
-
-        public void AppendFile(Stream contents, params string[] pathSegments)
-        {
-            RunTaskSerial(AppendFileAsync(contents, pathSegments));
-        }
-
 
         protected abstract Task<bool> deleteAsync(params string[] absolutePathSegments);
 
@@ -296,12 +260,32 @@ namespace Cloud.File.Storage.Manager.Common
 
         }
 
+        protected abstract Task move(string[] oldSegments, string[] newSegments);
+
+        public void Move(string[] oldFileSegments, string[] newFileSegments)
+            => MoveAsync(oldFileSegments, newFileSegments).Wait();
+
+        public void Move(string oldPath, string newPath) =>
+            MoveAsync(oldPath, newPath).Wait();
+
+        public void Move(IFileInfo file, string[] newFileSegments) =>
+            MoveAsync(file, newFileSegments).Wait();
+
+        public Task MoveAsync(string oldPath, string newPath) =>
+            MoveAsync(normalizePath(oldPath), normalizePath(newPath));
+
+        public Task MoveAsync(IFileInfo file, string[] newFileSegments) =>
+            move(fileSegments(file), getAbsoluteSegments(newFileSegments));
+
+        public Task MoveAsync(string[] oldFileSegments, string[] newFileSegments) =>
+            move(getAbsoluteSegments(oldFileSegments), getAbsoluteSegments(newFileSegments));
+
 
         public virtual async Task OnLocalFileStreamDisposingAsync(LocalFileStream stream)
         {
             if (stream.ReadOnly) return;
             stream.Position = 0;
-            await updateFileAsync(stream, stream.TargetFilePathSegments);
+            await updateFileAsync(stream, UpdateFileMode.Overwrite, stream.TargetFilePathSegments);
         }
 
         protected string[] normalizePath(string p)
