@@ -132,11 +132,6 @@ namespace Cloud.File.Storage.Manager.AmazonS3
             return new DirectoryContents(ret.Any(), ret.ToArray());
         }
 
-        protected override Task<long> appendFileAsync(Stream contents, params string[] absolutePathSegments)
-        {
-            throw new NotSupportedException("appendFile is not supported in AmazonS3FileStorageManager");
-        }
-
         protected override async Task<bool> deleteAsync(params string[] absolutePathSegments)
         {
             var info = await getFileInfoAsync(absolutePathSegments);
@@ -154,7 +149,6 @@ namespace Cloud.File.Storage.Manager.AmazonS3
             });
             return !ret.DeleteErrors.Any() && ret.DeletedObjects.Any();
         }
-
 
         protected override Task<string> getDownloadUrl(string[] absolutePathSegments, TimeSpan validity)
         {
