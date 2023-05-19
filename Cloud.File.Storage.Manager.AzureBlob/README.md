@@ -1,7 +1,5 @@
 # Cloud File Storage Manager
 
-## Azure Blob Storage
-
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Azure (Azure Blob Storage)` right now.
 
 ### Configuration
@@ -26,11 +24,3 @@ services.AddSingleton<ICloudFileStorageManager, AzureCloudFileStorageManager>(se
 }));  
 
 ```
-
-## Amazon S3
-
-
-## Minio (Amazon S3 Compatible Cloud Storage)
-
-
-## Physical

@@ -11,7 +11,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Azure-Blob, Azure-Blob-Storage, Azure</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <PackageReleaseNotes>- Switch to Azure.Storage.Blobs
 - Remove the append option
 - Add Move option
@@ -20,15 +20,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
+	<PackageReference Include="Azure.Storage.Blobs" Version="12.16.0" />
+	<PackageReference Include="Cloud.File.Storage.Manager.Common" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-	<PackageReference Include="Azure.Storage.Blobs" Version="12.16.0" />
-	<PackageReference Include="Cloud.File.Storage.Manager.Common" Version="2.0.0" />
+    <None Update="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
