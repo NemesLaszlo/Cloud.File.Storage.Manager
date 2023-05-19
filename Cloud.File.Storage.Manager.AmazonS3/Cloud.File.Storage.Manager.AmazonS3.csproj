@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="3.7.104.19" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="1.0.0" />
+  </ItemGroup>
+
 </Project>
