@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="2.0.0" />
-    <PackageReference Include="Minio" Version="5.0.0" />
+    <PackageReference Include="Minio" Version="3.1.1" />
   </ItemGroup>
 
 </Project>
