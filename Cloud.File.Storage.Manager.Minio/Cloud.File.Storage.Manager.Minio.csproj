@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>NemesLaszlo</Authors>
@@ -11,10 +11,13 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Minio, Amazon S3, S3</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Version>2.0.0</Version>
+    <PackageReleaseNotes>- .NET 8 upgrade
+- Update Cloud.File.Storage.Manager.Common 2.0.0 -&gt; 3.0.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="2.0.0" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.0.0" />
     <PackageReference Include="Minio" Version="3.1.1" />
   </ItemGroup>
 
