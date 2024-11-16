@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations for Azure Blob Storage like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
     <PackageProjectUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</PackageProjectUrl>
@@ -11,14 +10,12 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Azure-Blob, Azure-Blob-Storage, Azure</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>3.0.0</Version>
-    <PackageReleaseNotes>- .NET 8 upgrade
-- Package upgrade
-- Update Cloud.File.Storage.Manager.Common 2.0.0 -&gt; 3.0.0</PackageReleaseNotes>
+    <Version>3.0.1</Version>
+    <PackageReleaseNotes>- Package version update</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-	<PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+	<PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
     <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.0.0" />
   </ItemGroup>
 

@@ -28,7 +28,7 @@ namespace Cloud.File.Storage.Manager.AmazonS3
                 list = await Client.ListVersionsAsync(Options.BucketName, path(absolutePathSegments));
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 list = null;
             }
