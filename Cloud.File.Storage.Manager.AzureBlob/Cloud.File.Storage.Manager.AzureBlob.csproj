@@ -10,8 +10,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Azure-Blob, Azure-Blob-Storage, Azure</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>3.0.1</Version>
-    <PackageReleaseNotes>- Package version update</PackageReleaseNotes>
+    <Version>3.1.0</Version>
+    <PackageReleaseNotes>- Extended configuration options for Azure Blob</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
