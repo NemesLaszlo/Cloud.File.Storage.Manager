@@ -26,7 +26,7 @@ services.AddSingleton<ICloudFileStorageManager, AzureCloudFileStorageManager>(se
     AccountName = config.GetSection("AzureStorageSettings").GetValue<string>("AccountName"),
     AccountKey = config.GetSection("AzureStorageSettings").GetValue<string>("AccountKey"),
     ContainerName = config.GetSection("AzureStorageSettings").GetValue<string>("ContainerName"),
-	Protocol = config.GetSection("AzureStorageSettings").GetValue<string>("Protocol"),
+    Protocol = config.GetSection("AzureStorageSettings").GetValue<string>("Protocol"),
     Url = config.GetSection("AzureStorageSettings").GetValue<string>("Url")
 }));  
 
