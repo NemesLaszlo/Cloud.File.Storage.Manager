@@ -21,14 +21,17 @@ namespace Cloud.File.Storage.Manager.AzureBlob
         {
             if (string.IsNullOrEmpty(Options.AccountName))
                 throw new ArgumentException("AccountName is required", nameof(Options.AccountName));
-
             if (string.IsNullOrEmpty(Options.AccountKey))
                 throw new ArgumentException("AccountKey is required", nameof(Options.AccountKey));
-
             if (string.IsNullOrEmpty(Options.ContainerName))
                 throw new ArgumentException("ContainerName is required", nameof(Options.ContainerName));
+            if (string.IsNullOrEmpty(Options.Protocol))
+                throw new ArgumentException("Protocol is required", nameof(Options.Protocol));
 
-            string blobEndpoint = string.Format("https://{0}.blob.core.windows.net", Options.AccountName);
+            var sanitizedUrl = $"{Options.AccountName}.blob.core.windows.net";
+            if (!string.IsNullOrEmpty(Options.Url))
+                sanitizedUrl = Options.Url;
+            var blobEndpoint = $"{Options.Protocol}://{sanitizedUrl}";
             Credential = new StorageSharedKeyCredential(Options.AccountName, Options.AccountKey);
             ServiceClient = new BlobServiceClient(new Uri(blobEndpoint), Credential);
             Container = ServiceClient.GetBlobContainerClient(Options.ContainerName);

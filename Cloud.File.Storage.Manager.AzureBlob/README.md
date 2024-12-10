@@ -8,9 +8,12 @@ Let's add a section to the `appsettings.json`
 
 ```
 "AzureStorageSettings": {
+    "Protocol": "https",
     "AccountName": "",
     "AccountKey": "",
-    "ContainerName": ""
+    "ContainerName": "",
+    // Optional - Leave empty to use azure default url, otherwise provide the hostname (without the protocol and path) of the endpoint
+    "Url": ""
 }
 ```
 In the application, configure this settings part
@@ -20,7 +23,9 @@ services.AddSingleton<ICloudFileStorageManager, AzureCloudFileStorageManager>(se
 {
     AccountName = config.GetSection("AzureStorageSettings").GetValue<string>("AccountName"),
     AccountKey = config.GetSection("AzureStorageSettings").GetValue<string>("AccountKey"),
-    ContainerName = config.GetSection("AzureStorageSettings").GetValue<string>("ContainerName")
+    ContainerName = config.GetSection("AzureStorageSettings").GetValue<string>("ContainerName"),
+    Protocol = config.GetSection("AzureStorageSettings").GetValue<string>("Protocol"),
+    Url = config.GetSection("AzureStorageSettings").GetValue<string>("Url")
 }));  
 
 ```
