@@ -55,4 +55,12 @@ A `Public/Private Keypair` is required for the necessary configuration, which ca
 
 ![Keypair](images/Keys.png)
 
+When using a Box Platform App with JWT authentication, your app acts as a service account, also called an App User. This service account is isolated from your personal Box account.
 
+- Files and folders uploaded using JWT don't show up in "All Files" in your personal Box account — because they are not stored in your user’s root folder, but in the service account’s storage space.
+
+Where did your files go?
+
+If you're using JWT to authenticate via the platform app and then uploading files:
+- The uploads are happening under the App User's account, not your personal Box user.
+- Unless you explicitly upload to a folder owned/shared by a managed user (like yourself), it goes into the App User’s own root.
