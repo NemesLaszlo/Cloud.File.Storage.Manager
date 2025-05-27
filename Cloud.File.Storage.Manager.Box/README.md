@@ -32,3 +32,27 @@ services.AddSingleton<ICloudFileStorageManager, BoxFileStorageManager>(services 
 }));
 
 ```
+
+## Images of the Box side configuration
+
+Let's create a `Platform Application`
+
+![Platform App](images/DEV_Platform_Apps.png)
+
+It is necessary to `Enable` the applicaiton and `Authorization` from administrators is required. After that, a service account is created for the Platform application with which the API interaction takes place.
+
+`JWT` type application is recommended for this kind of use-cases
+
+![Auth Method](images/Auth_Method.png)
+
+Minimal access is sufficient
+
+![Access Level](images/Access_Level.png)
+
+Public/Private Keypair
+
+A `Public/Private Keypair` is required for the necessary configuration, which can be created with the click of a button. A `config file` is also downloaded here, which contains all the necessary configuration data required for the configuration. (ClientId, Keys, etc.)
+
+![Keypair](images/Keys.png)
+
+
