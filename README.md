@@ -151,3 +151,35 @@ services.AddSingleton<ICloudFileStorageManager, BoxFileStorageManager>(services 
 }));
 
 ```
+
+## SharePoint
+
+Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `SharePoint` right now.
+
+### Configuration
+
+Let's add a section to the `appsettings.json`
+
+```
+"SharePointStorageSettings": {
+    // The SharePoint site URL (e.g., https://tenant.sharepoint.com/sites/sitename)
+    "SiteUrl": "",
+    "DocumentLibraryName": "",
+    "TenantId": "",
+    "ClientId": "",
+    "ClientSecret": ""
+}
+```
+In the application, configure this settings part
+
+```cs
+services.AddSingleton<ICloudFileStorageManager, SharePointCloudFileStorageManager>(services => new SharePointCloudFileStorageManager(new SharePointCloudFileStorageManagerOptions()
+{
+    SiteUrl = config.GetSection("SharePointStorageSettings").GetValue<string>("SiteUrl"),
+    DocumentLibraryName = config.GetSection("SharePointStorageSettings").GetValue<string>("DocumentLibraryName"),
+    TenantId = config.GetSection("SharePointStorageSettings").GetValue<string>("TenantId"),
+    ClientId = config.GetSection("SharePointStorageSettings").GetValue<string>("ClientId"),
+    ClientSecret = config.GetSection("SharePointStorageSettings").GetValue<string>("ClientSecret")
+}));  
+
+```
