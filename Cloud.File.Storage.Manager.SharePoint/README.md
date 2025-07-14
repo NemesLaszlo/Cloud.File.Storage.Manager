@@ -38,4 +38,4 @@ Create an Azure AD app registration:
 3. Add API permissions: `Sites.ReadWrite.All` - Microsoft Graph (Manage / API permissions section)
 4. Create a client secret
 
-Then, you then have all the necessary values to connect your app to SharePoint and perform actions there.
+Then, you have all the necessary values to connect your app to SharePoint and perform actions there.
