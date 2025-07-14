@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cloud.File.Storage.Manager.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cloud.File.Storage.Manager.Box", "Cloud.File.Storage.Manager.Box\Cloud.File.Storage.Manager.Box.csproj", "{366B8EA9-3135-42D2-8E81-6D3D7680023F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cloud.File.Storage.Manager.SharePoint", "Cloud.File.Storage.Manager.SharePoint\Cloud.File.Storage.Manager.SharePoint.csproj", "{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{366B8EA9-3135-42D2-8E81-6D3D7680023F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{366B8EA9-3135-42D2-8E81-6D3D7680023F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{366B8EA9-3135-42D2-8E81-6D3D7680023F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

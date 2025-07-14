@@ -523,7 +523,7 @@ namespace Cloud.File.Storage.Manager.Box
 
         protected override Task<IChangeToken> watchAsync(string filter)
         {
-            throw new NotSupportedException("Watch is not supported in WriteableBoxFileProvider");
+            throw new NotSupportedException("Watch is not supported in BoxCloudFileStorageManager");
         }
     }
 }
