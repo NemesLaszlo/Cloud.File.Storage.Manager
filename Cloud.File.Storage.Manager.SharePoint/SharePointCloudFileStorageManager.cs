@@ -274,7 +274,10 @@ namespace Cloud.File.Storage.Manager.SharePoint
                     FileOptions.DeleteOnClose
                 );
 
-                await contentStream.CopyToAsync(seekableFileStream);
+                using (contentStream)
+                {
+                    await contentStream.CopyToAsync(seekableFileStream);
+                }
                 seekableFileStream.Position = 0;
                 return seekableFileStream;
             }
