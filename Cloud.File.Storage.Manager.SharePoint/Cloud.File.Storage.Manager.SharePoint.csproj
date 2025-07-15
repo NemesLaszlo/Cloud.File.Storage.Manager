@@ -3,14 +3,15 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations for SharePoint like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
     <PackageProjectUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</RepositoryUrl>
     <PackageTags>CloudStorage, Storage, FileOperations, SharePoint, SharePoint-Storage</PackageTags>
-    <PackageReleaseNotes>- SharePoint support init</PackageReleaseNotes>
+    <PackageReleaseNotes>- Optional working folder config option
+- Upload stream extra edge-case handling</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 

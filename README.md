@@ -167,7 +167,9 @@ Let's add a section to the `appsettings.json`
     "DocumentLibraryName": "",
     "TenantId": "",
     "ClientId": "",
-    "ClientSecret": ""
+    "ClientSecret": "",
+    // Optional: The folder name where the files will be stored
+    "WorkFolderName": ""
 }
 ```
 In the application, configure this settings part
@@ -180,6 +182,7 @@ services.AddSingleton<ICloudFileStorageManager, SharePointCloudFileStorageManage
     TenantId = config.GetSection("SharePointStorageSettings").GetValue<string>("TenantId"),
     ClientId = config.GetSection("SharePointStorageSettings").GetValue<string>("ClientId"),
     ClientSecret = config.GetSection("SharePointStorageSettings").GetValue<string>("ClientSecret")
+    WorkFolderName = config.GetSection("SharePointStorageSettings").GetValue<string>("WorkFolderName")
 }));  
 
 ```

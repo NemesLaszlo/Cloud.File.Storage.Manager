@@ -4,13 +4,15 @@ namespace Cloud.File.Storage.Manager.SharePoint
 {
     public class SharePointCloudFileStorageManagerOptions : FileProviderOptions
     {
-        public SharePointCloudFileStorageManagerOptions(string siteUrl, string documentLibraryName, string tenantId, string clientId, string clientSecret)
+        public SharePointCloudFileStorageManagerOptions(string siteUrl, string documentLibraryName, string tenantId, string clientId, 
+            string clientSecret, string workFolderName)
         {
             SiteUrl = siteUrl;
             DocumentLibraryName = documentLibraryName;
             TenantId = tenantId;
             ClientId = clientId;
             ClientSecret = clientSecret;
+            WorkFolderName = workFolderName;
         }
 
         public SharePointCloudFileStorageManagerOptions() { }
@@ -20,5 +22,6 @@ namespace Cloud.File.Storage.Manager.SharePoint
         public string TenantId { get; set; }
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
+        public string WorkFolderName { get; set; }
     }
 }

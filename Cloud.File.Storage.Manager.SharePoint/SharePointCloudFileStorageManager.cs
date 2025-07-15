@@ -19,6 +19,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
         private const long SmallFileThreshold = 20 * 1024 * 1024; // 20MB - simple upload for smaller files
         private GraphServiceClient GraphClient { get; }
         private string DriveId { get; }
+        private string WorkFolderId { get; set; }
 
         public SharePointCloudFileStorageManager(SharePointCloudFileStorageManagerOptions options) : base(options)
         {
@@ -32,7 +33,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 throw new ArgumentException("ClientSecret is required", nameof(Options.ClientSecret));
 
             GraphClient = createGraphClient();
-            DriveId = initializeSiteAndDriveAsync().GetAwaiter().GetResult();
+            DriveId = initializeDriveAsync().GetAwaiter().GetResult();
         }
 
         private GraphServiceClient createGraphClient()
@@ -47,7 +48,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
             return graphClient;
         }
 
-        private async Task<string> initializeSiteAndDriveAsync()
+        private async Task<string> initializeDriveAsync()
         {
             try
             {
@@ -66,12 +67,49 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 if (targetDrive == null)
                     throw new ArgumentException($"Document library '{Options.DocumentLibraryName}' not found");
 
+                if (!string.IsNullOrEmpty(Options.WorkFolderName))
+                {
+                    try
+                    {
+                        // Check if the work folder exists
+                        var workFolderItem = await GraphClient.Drives[targetDrive.Id].Items["root"]
+                            .ItemWithPath(Options.WorkFolderName)
+                            .GetAsync();
+
+                        if (workFolderItem == null || workFolderItem.Folder == null)
+                        {
+                            // If it doesn't exist or is a file, create it
+                            var newFolder = new DriveItem { Name = Options.WorkFolderName, Folder = new Folder() };
+                            workFolderItem = await GraphClient.Drives[targetDrive.Id].Items["root"].Children.PostAsync(newFolder);
+                        }
+                        WorkFolderId = workFolderItem.Id;
+                    }
+                    catch (ODataError ex) when (ex.Error?.Code == "itemNotFound")
+                    {
+                        // Folder not found, create it
+                        var newFolder = new DriveItem { Name = Options.WorkFolderName, Folder = new Folder() };
+                        var createdFolder = await GraphClient.Drives[targetDrive.Id].Items["root"].Children.PostAsync(newFolder);
+                        WorkFolderId = createdFolder.Id;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"Failed to initialize work folder '{Options.WorkFolderName}'", ex);
+                    }
+                }
+
                 return targetDrive.Id;
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException("Failed to initialize SharePoint connection", ex);
             }
+        }
+
+        private Microsoft.Graph.Drives.Item.Items.Item.DriveItemItemRequestBuilder getParentItemBuilder()
+        {
+            if (!string.IsNullOrEmpty(WorkFolderId))
+                return GraphClient.Drives[DriveId].Items[WorkFolderId];
+            return GraphClient.Drives[DriveId].Items["root"];
         }
 
         private string getPath(string[] absolutePathSegments) => string.Join("/", absolutePathSegments);
@@ -118,9 +156,9 @@ namespace Cloud.File.Storage.Manager.SharePoint
             DriveItemCollectionResponse response;
 
             if (string.IsNullOrEmpty(path))
-                response = await GraphClient.Drives[DriveId].Items["root"].Children.GetAsync();
+                response = await getParentItemBuilder().Children.GetAsync();
             else
-                response = await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(path).Children.GetAsync();
+                response = await getParentItemBuilder().ItemWithPath(path).Children.GetAsync();
 
             if (response?.Value != null)
                 items.AddRange(response.Value);
@@ -143,9 +181,9 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 DriveItem item;
 
                 if (string.IsNullOrEmpty(path))
-                    item = await GraphClient.Drives[DriveId].Items["root"].GetAsync();
+                    item = await getParentItemBuilder().GetAsync();
                 else
-                    item = await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(path).GetAsync();
+                    item = await getParentItemBuilder().ItemWithPath(path).GetAsync();
 
                 return new FileInfo(
                     this,
@@ -222,7 +260,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
             try
             {
                 var path = getPath(absolutePathSegments);
-                var contentStream = await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(path).Content.GetAsync();
+                var contentStream = await getParentItemBuilder().ItemWithPath(path).Content.GetAsync();
                 if (contentStream == null)
                     throw new FileNotFoundException($"File content not available for {getPath(absolutePathSegments)}");
 
@@ -260,7 +298,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
             {
                 try
                 {
-                    var rootItem = await GraphClient.Drives[DriveId].Items["root"].GetAsync();
+                    var rootItem = await getParentItemBuilder().GetAsync();
                     return rootItem != null;
                 }
                 catch (Exception)
@@ -296,9 +334,9 @@ namespace Cloud.File.Storage.Manager.SharePoint
             {
                 DriveItem item;
                 if (string.IsNullOrEmpty(path))
-                    item = await GraphClient.Drives[DriveId].Items["root"].GetAsync();
+                    item = await getParentItemBuilder().GetAsync();
                 else
-                    item = await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(path).GetAsync();
+                    item = await getParentItemBuilder().ItemWithPath(path).GetAsync();
 
                 return item?.Folder != null ? item : null;
             }
@@ -345,12 +383,12 @@ namespace Cloud.File.Storage.Manager.SharePoint
                     if (string.IsNullOrEmpty(currentPath))
                     {
                         // Create in root
-                        await GraphClient.Drives[DriveId].Items["root"].Children.PostAsync(driveItem);
+                        await getParentItemBuilder().Children.PostAsync(driveItem);
                     }
                     else
                     {
                         // Create in parent folder
-                        await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(currentPath).Children.PostAsync(driveItem);
+                        await getParentItemBuilder().ItemWithPath(currentPath).Children.PostAsync(driveItem);
                     }
 
                     currentPath = newPath;
@@ -370,8 +408,27 @@ namespace Cloud.File.Storage.Manager.SharePoint
 
         protected override async Task updateFileAsync(Stream contents, UpdateFileMode mode, params string[] absolutePathSegments)
         {
+            var ownsBufferedStream = false;
+            Stream bufferedIncomingStream = contents;
             try
             {
+                if (!contents.CanSeek)
+                {
+                    var tempStream = new FileStream(
+                        Path.GetTempFileName(),
+                        FileMode.Create,
+                        FileAccess.ReadWrite,
+                        FileShare.None,
+                        4096,
+                        FileOptions.Asynchronous | FileOptions.DeleteOnClose);
+
+                    await contents.CopyToAsync(tempStream);
+                    tempStream.Position = 0;
+
+                    bufferedIncomingStream = tempStream;
+                    ownsBufferedStream = true;
+                }
+
                 if (absolutePathSegments.Length > 1)
                 {
                     var folderPath = absolutePathSegments.Take(absolutePathSegments.Length - 1).ToArray();
@@ -381,18 +438,19 @@ namespace Cloud.File.Storage.Manager.SharePoint
                         throw new InvalidOperationException($"Failed to create folder path: {getPath(folderPath)}");
                     }
                 }
-                var path = getPath(absolutePathSegments);
-                var fileName = absolutePathSegments.Last();
 
                 if (mode == UpdateFileMode.Append)
                 {
-                    Stream finalContentsStream = contents;
+                    Stream finalContentsStream = bufferedIncomingStream;
+                    var ownsFinalStream = false;
                     try
                     {
-                        using (var existingContent = await readFileAsync(absolutePathSegments))
+                        try
                         {
+                            await using var existingContent = await readFileAsync(absolutePathSegments);
+
                             var existingSize = existingContent.Length;
-                            var newContentSize = contents.Length;
+                            var newContentSize = bufferedIncomingStream.Length;
                             var totalSize = existingSize + newContentSize;
 
                             if (totalSize > SmallFileThreshold)
@@ -406,44 +464,51 @@ namespace Cloud.File.Storage.Manager.SharePoint
                                     FileOptions.DeleteOnClose | FileOptions.SequentialScan);
 
                                 await existingContent.CopyToAsync(tempFileStream);
-                                await contents.CopyToAsync(tempFileStream);
+                                await bufferedIncomingStream.CopyToAsync(tempFileStream);
                                 tempFileStream.Position = 0;
+
                                 finalContentsStream = tempFileStream;
+                                ownsFinalStream = true;
                             }
                             else
                             {
                                 var combinedStream = new MemoryStream();
                                 await existingContent.CopyToAsync(combinedStream);
-                                await contents.CopyToAsync(combinedStream);
+                                await bufferedIncomingStream.CopyToAsync(combinedStream);
                                 combinedStream.Position = 0;
+
                                 finalContentsStream = combinedStream;
+                                ownsFinalStream = true;
                             }
                         }
+                        catch (FileNotFoundException)
+                        {
+                            // File doesn't exist yet — treat it as new
+                        }
+
+                        if (finalContentsStream.CanSeek)
+                            finalContentsStream.Position = 0;
+
+                        if (finalContentsStream.Length <= SmallFileThreshold)
+                            await uploadSmallFileAsync(finalContentsStream, absolutePathSegments);
+                        else
+                            await uploadLargeFileAsync(finalContentsStream, absolutePathSegments);
                     }
-                    catch (FileNotFoundException)
+                    finally
                     {
-
+                        if (ownsFinalStream)
+                            await finalContentsStream.DisposeAsync();
                     }
-
-                    if (finalContentsStream.CanSeek)
-                        finalContentsStream.Position = 0;
-
-                    var fileSize = finalContentsStream.Length;
-                    if (fileSize <= SmallFileThreshold)
-                        await uploadSmallFileAsync(finalContentsStream, absolutePathSegments);
-                    else
-                        await uploadLargeFileAsync(finalContentsStream, absolutePathSegments);
                 }
                 else
                 {
-                    if (contents.CanSeek)
-                        contents.Position = 0;
+                    if (bufferedIncomingStream.CanSeek)
+                        bufferedIncomingStream.Position = 0;
 
-                    var fileSize = contents.Length;
-                    if (fileSize <= SmallFileThreshold)
-                        await uploadSmallFileAsync(contents, absolutePathSegments);
+                    if (bufferedIncomingStream.Length <= SmallFileThreshold)
+                        await uploadSmallFileAsync(bufferedIncomingStream, absolutePathSegments);
                     else
-                        await uploadLargeFileAsync(contents, absolutePathSegments);
+                        await uploadLargeFileAsync(bufferedIncomingStream, absolutePathSegments);
                 }
             }
             catch (ODataError ex)
@@ -451,10 +516,17 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 if (ex.Error?.Code == "itemNotFound")
                 {
                     await createFolderHierarchyAsync(absolutePathSegments.Take(absolutePathSegments.Length - 1).ToArray());
-                    await updateFileAsync(contents, mode, absolutePathSegments);
+                    if (bufferedIncomingStream.CanSeek)
+                        bufferedIncomingStream.Position = 0;
+                    await updateFileAsync(bufferedIncomingStream, mode, absolutePathSegments);
                     return;
                 }
                 throw;
+            }
+            finally
+            {
+                if (ownsBufferedStream)
+                    await bufferedIncomingStream.DisposeAsync();
             }
         }
 
@@ -465,13 +537,13 @@ namespace Cloud.File.Storage.Manager.SharePoint
             if (absolutePathSegments.Length == 1)
             {
                 // File is in root directory
-                await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(fileName).Content.PutAsync(contents);
+                await getParentItemBuilder().ItemWithPath(fileName).Content.PutAsync(contents);
             }
             else
             {
                 // File is in a subdirectory
                 var fullPath = string.Join("/", absolutePathSegments);
-                await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(fullPath).Content.PutAsync(contents);
+                await getParentItemBuilder().ItemWithPath(fullPath).Content.PutAsync(contents);
             }
         }
 
@@ -526,13 +598,13 @@ namespace Cloud.File.Storage.Manager.SharePoint
             if (absolutePathSegments.Length == 1)
             {
                 // File is in root directory
-                return await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(fileName).CreateUploadSession.PostAsync(createUploadSessionPostRequestBody);
+                return await getParentItemBuilder().ItemWithPath(fileName).CreateUploadSession.PostAsync(createUploadSessionPostRequestBody);
             }
             else
             {
                 // File is in a subdirectory
                 var fullPath = string.Join("/", absolutePathSegments);
-                return await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(fullPath).CreateUploadSession.PostAsync(createUploadSessionPostRequestBody);
+                return await getParentItemBuilder().ItemWithPath(fullPath).CreateUploadSession.PostAsync(createUploadSessionPostRequestBody);
             }
         }
 
@@ -581,7 +653,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
             try
             {
                 var path = getPath(absolutePathSegments);
-                await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(path).DeleteAsync();
+                await getParentItemBuilder().ItemWithPath(path).DeleteAsync();
                 return true;
             }
             catch (ODataError ex)
@@ -609,7 +681,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
 
                 try
                 {
-                    var sourceItem = await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(oldPath).GetAsync();
+                    var sourceItem = await getParentItemBuilder().ItemWithPath(oldPath).GetAsync();
                     if (sourceItem == null)
                     {
                         throw new FileNotFoundException($"Source item not found: {oldPath}");
@@ -641,7 +713,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
 
                 if (!string.IsNullOrEmpty(newParentPath))
                 {
-                    var parentItem = await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(newParentPath).GetAsync();
+                    var parentItem = await getParentItemBuilder().ItemWithPath(newParentPath).GetAsync();
                     moveRequest.ParentReference = new ItemReference
                     {
                         Id = parentItem.Id
@@ -649,14 +721,14 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 }
                 else
                 {
-                    var rootItem = await GraphClient.Drives[DriveId].Items["root"].GetAsync();
+                    var rootItem = await getParentItemBuilder().GetAsync();
                     moveRequest.ParentReference = new ItemReference
                     {
                         Id = rootItem.Id
                     };
                 }
 
-                await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(oldPath).PatchAsync(moveRequest);
+                await getParentItemBuilder().ItemWithPath(oldPath).PatchAsync(moveRequest);
             }
             catch (ODataError ex)
             {
@@ -673,7 +745,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
             try
             {
                 var path = getPath(absolutePathSegments);
-                var item = await GraphClient.Drives[DriveId].Items["root"].ItemWithPath(path).GetAsync();
+                var item = await getParentItemBuilder().ItemWithPath(path).GetAsync();
                 return item.AdditionalData?.ContainsKey("@microsoft.graph.downloadUrl") == true
                     ? item.AdditionalData["@microsoft.graph.downloadUrl"].ToString()
                     : throw new NotSupportedException("Download URL not available for this item");
