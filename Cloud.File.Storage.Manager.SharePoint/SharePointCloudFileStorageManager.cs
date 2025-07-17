@@ -48,6 +48,13 @@ namespace Cloud.File.Storage.Manager.SharePoint
             return graphClient;
         }
 
+        private string normalizeWorkFolderPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return path;
+            return path.Replace('\\', '/').Trim('/');
+        }
+
         private async Task<string> initializeDriveAsync()
         {
             try
@@ -67,33 +74,42 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 if (targetDrive == null)
                     throw new ArgumentException($"Document library '{Options.DocumentLibraryName}' not found");
 
-                if (!string.IsNullOrEmpty(Options.WorkFolderName))
+                if (!string.IsNullOrEmpty(Options.WorkFolderPath))
                 {
                     try
                     {
+                        // Normalize the path to use forward slashes
+                        var normalizedWorkFolderPath = normalizeWorkFolderPath(Options.WorkFolderPath);
                         // Check if the work folder exists
                         var workFolderItem = await GraphClient.Drives[targetDrive.Id].Items["root"]
-                            .ItemWithPath(Options.WorkFolderName)
+                            .ItemWithPath(normalizedWorkFolderPath)
                             .GetAsync();
 
                         if (workFolderItem == null || workFolderItem.Folder == null)
                         {
-                            // If it doesn't exist or is a file, create it
-                            var newFolder = new DriveItem { Name = Options.WorkFolderName, Folder = new Folder() };
-                            workFolderItem = await GraphClient.Drives[targetDrive.Id].Items["root"].Children.PostAsync(newFolder);
+                            // If it doesn't exist, create the folder hierarchy
+                            await createWorkFolderHierarchyFromPath(targetDrive.Id, normalizedWorkFolderPath);
+                            // Get the created folder
+                            workFolderItem = await GraphClient.Drives[targetDrive.Id].Items["root"]
+                                .ItemWithPath(normalizedWorkFolderPath)
+                                .GetAsync();
                         }
                         WorkFolderId = workFolderItem.Id;
                     }
                     catch (ODataError ex) when (ex.Error?.Code == "itemNotFound")
                     {
-                        // Folder not found, create it
-                        var newFolder = new DriveItem { Name = Options.WorkFolderName, Folder = new Folder() };
-                        var createdFolder = await GraphClient.Drives[targetDrive.Id].Items["root"].Children.PostAsync(newFolder);
-                        WorkFolderId = createdFolder.Id;
+                        // Folder not found, create the entire hierarchy
+                        var normalizedWorkFolderPath = normalizeWorkFolderPath(Options.WorkFolderPath);
+                        await createWorkFolderHierarchyFromPath(targetDrive.Id, normalizedWorkFolderPath);
+                        // Get the created folder
+                        var workFolderItem = await GraphClient.Drives[targetDrive.Id].Items["root"]
+                            .ItemWithPath(normalizedWorkFolderPath)
+                            .GetAsync();
+                        WorkFolderId = workFolderItem.Id;
                     }
                     catch (Exception ex)
                     {
-                        throw new InvalidOperationException($"Failed to initialize work folder '{Options.WorkFolderName}'", ex);
+                        throw new InvalidOperationException($"Failed to initialize work folder '{Options.WorkFolderPath}'", ex);
                     }
                 }
 
@@ -102,6 +118,78 @@ namespace Cloud.File.Storage.Manager.SharePoint
             catch (Exception ex)
             {
                 throw new InvalidOperationException("Failed to initialize SharePoint connection", ex);
+            }
+        }
+
+        private async Task createWorkFolderHierarchyFromPath(string driveId, string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath))
+                return;
+            var pathSegments = folderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            await createWorkFolderHierarchyRecursive(driveId, pathSegments, 0, "");
+        }
+
+        private async Task createWorkFolderHierarchyRecursive(string driveId, string[] pathSegments, int currentIndex, string currentPath)
+        {
+            if (currentIndex >= pathSegments.Length)
+                return;
+
+            var segment = pathSegments[currentIndex];
+            var newPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}/{segment}";
+
+            try
+            {
+                // Check if this level already exists
+                var existingItem = await GraphClient.Drives[driveId].Items["root"]
+                    .ItemWithPath(newPath)
+                    .GetAsync();
+
+                if (existingItem != null && existingItem.Folder != null)
+                {
+                    // Folder exists, continue to next level
+                    await createWorkFolderHierarchyRecursive(driveId, pathSegments, currentIndex + 1, newPath);
+                    return;
+                }
+            }
+            catch (ODataError ex) when (ex.Error?.Code == "itemNotFound")
+            {
+                // Folder doesn't exist, we will create it
+            }
+
+            try
+            {
+                // Create the folder at this level
+                var driveItem = new DriveItem
+                {
+                    Name = segment,
+                    Folder = new Folder()
+                };
+
+                if (string.IsNullOrEmpty(currentPath))
+                {
+                    // Create in root
+                    await GraphClient.Drives[driveId].Items["root"].Children.PostAsync(driveItem);
+                }
+                else
+                {
+                    // Create in parent folder
+                    await GraphClient.Drives[driveId].Items["root"]
+                        .ItemWithPath(currentPath)
+                        .Children.PostAsync(driveItem);
+                }
+
+                // Continue to next level
+                await createWorkFolderHierarchyRecursive(driveId, pathSegments, currentIndex + 1, newPath);
+            }
+            catch (ODataError ex)
+            {
+                // If folder already exists, that's fine
+                if (ex.Error?.Code == "nameAlreadyExists")
+                {
+                    await createWorkFolderHierarchyRecursive(driveId, pathSegments, currentIndex + 1, newPath);
+                    return;
+                }
+                throw;
             }
         }
 
