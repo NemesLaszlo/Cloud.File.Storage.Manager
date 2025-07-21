@@ -55,6 +55,74 @@ namespace Cloud.File.Storage.Manager.SharePoint
             return path.Replace('\\', '/').Trim('/');
         }
 
+        private string getRelativePathFromAbsolute(string[] absolutePathSegments)
+        {
+            if (string.IsNullOrEmpty(Options.WorkFolderPath))
+            {
+                // No work folder, use full path
+                return string.Join("/", absolutePathSegments);
+            }
+
+            // Strip work folder segments from the beginning
+            var workFolderSegments = normalizeWorkFolderPath(Options.WorkFolderPath)
+                .Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            if (absolutePathSegments.Length >= workFolderSegments.Length)
+            {
+                // Check if path starts with work folder
+                bool startsWithWorkFolder = true;
+                for (int i = 0; i < workFolderSegments.Length; i++)
+                {
+                    if (!absolutePathSegments[i].Equals(workFolderSegments[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        startsWithWorkFolder = false;
+                        break;
+                    }
+                }
+
+                if (startsWithWorkFolder)
+                {
+                    // Remove work folder segments, return the rest
+                    var relativeSegments = absolutePathSegments.Skip(workFolderSegments.Length).ToArray();
+                    return string.Join("/", relativeSegments);
+                }
+            }
+
+            // Path doesn't start with work folder, use as-is
+            return string.Join("/", absolutePathSegments);
+        }
+
+        private string[] getRelativeSegmentsFromAbsolute(string[] absolutePathSegments)
+        {
+            if (string.IsNullOrEmpty(Options.WorkFolderPath))
+            {
+                return absolutePathSegments;
+            }
+
+            var workFolderSegments = normalizeWorkFolderPath(Options.WorkFolderPath)
+                .Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            if (absolutePathSegments.Length >= workFolderSegments.Length)
+            {
+                bool startsWithWorkFolder = true;
+                for (int i = 0; i < workFolderSegments.Length; i++)
+                {
+                    if (!absolutePathSegments[i].Equals(workFolderSegments[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        startsWithWorkFolder = false;
+                        break;
+                    }
+                }
+
+                if (startsWithWorkFolder)
+                {
+                    return absolutePathSegments.Skip(workFolderSegments.Length).ToArray();
+                }
+            }
+
+            return absolutePathSegments;
+        }
+
         private async Task<string> initializeDriveAsync()
         {
             try
@@ -206,9 +274,9 @@ namespace Cloud.File.Storage.Manager.SharePoint
         {
             try
             {
-                var path = getPath(absolutePathSegments);
+                var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
                 var items = new List<DriveItem>();
-                var allItems = await getAllItemsAsync(path);
+                var allItems = await getAllItemsAsync(relativePath);
                 items.AddRange(allItems);
 
                 if (deep)
@@ -238,15 +306,15 @@ namespace Cloud.File.Storage.Manager.SharePoint
             }
         }
 
-        private async Task<IEnumerable<DriveItem>> getAllItemsAsync(string path)
+        private async Task<IEnumerable<DriveItem>> getAllItemsAsync(string relativePath)
         {
             var items = new List<DriveItem>();
             DriveItemCollectionResponse response;
 
-            if (string.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(relativePath))
                 response = await getParentItemBuilder().Children.GetAsync();
             else
-                response = await getParentItemBuilder().ItemWithPath(path).Children.GetAsync();
+                response = await getParentItemBuilder().ItemWithPath(relativePath).Children.GetAsync();
 
             if (response?.Value != null)
                 items.AddRange(response.Value);
@@ -265,19 +333,19 @@ namespace Cloud.File.Storage.Manager.SharePoint
         {
             try
             {
-                var path = getPath(absolutePathSegments);
+                var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
                 DriveItem item;
 
-                if (string.IsNullOrEmpty(path))
+                if (string.IsNullOrEmpty(relativePath))
                     item = await getParentItemBuilder().GetAsync();
                 else
-                    item = await getParentItemBuilder().ItemWithPath(path).GetAsync();
+                    item = await getParentItemBuilder().ItemWithPath(relativePath).GetAsync();
 
                 return new FileInfo(
                     this,
                     true,
                     item.Size ?? 0,
-                    path,
+                    getPath(absolutePathSegments),
                     absolutePathSegments.Last(),
                     item.LastModifiedDateTime ?? DefaultDateTime,
                     item.Folder != null,
@@ -347,8 +415,8 @@ namespace Cloud.File.Storage.Manager.SharePoint
         {
             try
             {
-                var path = getPath(absolutePathSegments);
-                var contentStream = await getParentItemBuilder().ItemWithPath(path).Content.GetAsync();
+                var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
+                var contentStream = await getParentItemBuilder().ItemWithPath(relativePath).Content.GetAsync();
                 if (contentStream == null)
                     throw new FileNotFoundException($"File content not available for {getPath(absolutePathSegments)}");
 
@@ -401,16 +469,17 @@ namespace Cloud.File.Storage.Manager.SharePoint
             try
             {
                 // Check if the full path already exists in SharePoint
-                var fullPath = getPath(absolutePathSegments);
-                var existingItem = await getFolderItemAsync(fullPath);
+                var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
+                var existingItem = await getFolderItemAsync(relativePath);
                 if (existingItem != null && existingItem.Folder != null)
                     return true;
 
                 // Path doesn't exist, create the folder hierarchy step by step
-                await createFolderHierarchyAsync(absolutePathSegments);
+                var relativeSegments = getRelativeSegmentsFromAbsolute(absolutePathSegments);
+                await createFolderHierarchyAsync(relativeSegments);
 
                 // Verify the path was created successfully
-                var verificationItem = await getFolderItemAsync(fullPath);
+                var verificationItem = await getFolderItemAsync(relativePath);
                 return verificationItem != null && verificationItem.Folder != null;
             }
             catch (Exception)
@@ -623,19 +692,8 @@ namespace Cloud.File.Storage.Manager.SharePoint
 
         private async Task uploadSmallFileAsync(Stream contents, string[] absolutePathSegments)
         {
-            var fileName = absolutePathSegments.Last();
-
-            if (absolutePathSegments.Length == 1)
-            {
-                // File is in root directory
-                await getParentItemBuilder().ItemWithPath(fileName).Content.PutAsync(contents);
-            }
-            else
-            {
-                // File is in a subdirectory
-                var fullPath = string.Join("/", absolutePathSegments);
-                await getParentItemBuilder().ItemWithPath(fullPath).Content.PutAsync(contents);
-            }
+            var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
+            await getParentItemBuilder().ItemWithPath(relativePath).Content.PutAsync(contents);
         }
 
         private async Task uploadLargeFileAsync(Stream contents, string[] absolutePathSegments)
@@ -674,7 +732,6 @@ namespace Cloud.File.Storage.Manager.SharePoint
 
         private async Task<UploadSession> createUploadSessionAsync(string[] absolutePathSegments)
         {
-            var fileName = absolutePathSegments.Last();
             var createUploadSessionPostRequestBody = new CreateUploadSessionPostRequestBody
             {
                 Item = new DriveItemUploadableProperties
@@ -686,17 +743,8 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 }
             };
 
-            if (absolutePathSegments.Length == 1)
-            {
-                // File is in root directory
-                return await getParentItemBuilder().ItemWithPath(fileName).CreateUploadSession.PostAsync(createUploadSessionPostRequestBody);
-            }
-            else
-            {
-                // File is in a subdirectory
-                var fullPath = string.Join("/", absolutePathSegments);
-                return await getParentItemBuilder().ItemWithPath(fullPath).CreateUploadSession.PostAsync(createUploadSessionPostRequestBody);
-            }
+            var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
+            return await getParentItemBuilder().ItemWithPath(relativePath).CreateUploadSession.PostAsync(createUploadSessionPostRequestBody);
         }
 
         private async Task<UploadResult<DriveItem>> uploadChunkAsync(string uploadUrl, Stream chunkStream, string rangeHeader)
@@ -743,8 +791,8 @@ namespace Cloud.File.Storage.Manager.SharePoint
         {
             try
             {
-                var path = getPath(absolutePathSegments);
-                await getParentItemBuilder().ItemWithPath(path).DeleteAsync();
+                var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
+                await getParentItemBuilder().ItemWithPath(relativePath).DeleteAsync();
                 return true;
             }
             catch (ODataError ex)
@@ -766,23 +814,24 @@ namespace Cloud.File.Storage.Manager.SharePoint
                 if (newSegments == null || newSegments.Length == 0)
                     throw new ArgumentException("Destination path cannot be null or empty", nameof(newSegments));
 
-                var oldPath = getPath(oldSegments);
+                var oldRelativePath = getRelativePathFromAbsolute(oldSegments);
                 var newFileName = newSegments.Last();
-                var newParentPath = newSegments.Length > 1 ? string.Join("/", newSegments.Take(newSegments.Length - 1)) : "";
+                var newParentSegments = newSegments.Length > 1 ? newSegments.Take(newSegments.Length - 1).ToArray() : new string[0];
+                var newParentRelativePath = getRelativePathFromAbsolute(newParentSegments);
 
                 try
                 {
-                    var sourceItem = await getParentItemBuilder().ItemWithPath(oldPath).GetAsync();
+                    var sourceItem = await getParentItemBuilder().ItemWithPath(oldRelativePath).GetAsync();
                     if (sourceItem == null)
                     {
-                        throw new FileNotFoundException($"Source item not found: {oldPath}");
+                        throw new FileNotFoundException($"Source item not found: {getPath(oldSegments)}");
                     }
                 }
                 catch (ODataError ex)
                 {
                     if (ex.Error?.Code == "itemNotFound")
                     {
-                        throw new FileNotFoundException($"Source item not found: {oldPath}");
+                        throw new FileNotFoundException($"Source item not found: {getPath(oldSegments)}");
                     }
                     throw;
                 }
@@ -802,9 +851,9 @@ namespace Cloud.File.Storage.Manager.SharePoint
                     Name = newFileName
                 };
 
-                if (!string.IsNullOrEmpty(newParentPath))
+                if (!string.IsNullOrEmpty(newParentRelativePath))
                 {
-                    var parentItem = await getParentItemBuilder().ItemWithPath(newParentPath).GetAsync();
+                    var parentItem = await getParentItemBuilder().ItemWithPath(newParentRelativePath).GetAsync();
                     moveRequest.ParentReference = new ItemReference
                     {
                         Id = parentItem.Id
@@ -819,7 +868,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
                     };
                 }
 
-                await getParentItemBuilder().ItemWithPath(oldPath).PatchAsync(moveRequest);
+                await getParentItemBuilder().ItemWithPath(oldRelativePath).PatchAsync(moveRequest);
             }
             catch (ODataError ex)
             {
@@ -835,8 +884,8 @@ namespace Cloud.File.Storage.Manager.SharePoint
         {
             try
             {
-                var path = getPath(absolutePathSegments);
-                var item = await getParentItemBuilder().ItemWithPath(path).GetAsync();
+                var relativePath = getRelativePathFromAbsolute(absolutePathSegments);
+                var item = await getParentItemBuilder().ItemWithPath(relativePath).GetAsync();
                 return item.AdditionalData?.ContainsKey("@microsoft.graph.downloadUrl") == true
                     ? item.AdditionalData["@microsoft.graph.downloadUrl"].ToString()
                     : throw new NotSupportedException("Download URL not available for this item");
@@ -853,7 +902,7 @@ namespace Cloud.File.Storage.Manager.SharePoint
 
         protected override Task<IChangeToken> watchAsync(string filter)
         {
-            throw new PlatformNotSupportedException("Watch is not supported in SharePointCloudFileStorageManager");
+            throw new PlatformNotSupportedException("Watch is not supported in WriteableSharePointFileProvider");
         }
     }
 
