@@ -186,3 +186,39 @@ services.AddSingleton<ICloudFileStorageManager, SharePointCloudFileStorageManage
 }));  
 
 ```
+
+## Google Cloud Storage
+
+Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Google Cloud Storage (GCS)` right now.
+
+### Configuration
+
+Let's add a section to the `appsettings.json`
+
+```
+"GoogleCloudStorageSettings": {
+    "BucketName": "",
+    // Service account credentials (client_email + private_key from the key file)
+    "ClientEmail": "",
+    "PrivateKey": "",
+    // Optional
+    "ProjectId": "",
+    // Optional: the root folder inside the bucket where the files will be stored. Leave empty for the bucket root.
+    "RootDirectoryPath": ""
+}
+```
+In the application, configure this settings part
+
+```cs
+services.AddSingleton<ICloudFileStorageManager, GoogleCloudStorageFileStorageManager>(services => new GoogleCloudStorageFileStorageManager(new GoogleCloudStorageFileStorageManagerOptions()
+{
+    BucketName = config.GetSection("GoogleCloudStorageSettings").GetValue<string>("BucketName"),
+    ClientEmail = config.GetSection("GoogleCloudStorageSettings").GetValue<string>("ClientEmail"),
+    PrivateKey = config.GetSection("GoogleCloudStorageSettings").GetValue<string>("PrivateKey"),
+    ProjectId = config.GetSection("GoogleCloudStorageSettings").GetValue<string>("ProjectId"),
+    RootDirectoryPath = config.GetSection("GoogleCloudStorageSettings").GetValue<string>("RootDirectoryPath")
+}));  
+
+```
+
+Credentials are resolved in this order: (1) `ClientEmail` + `PrivateKey` discrete fields, (2) `CredentialsJson` (the whole service account key JSON as one string), or (3) Application Default Credentials when all are empty — on GKE/GCE this uses Workload Identity / the metadata server, keeping secrets out of the configuration. Grant the service account `Storage Object Admin` on the bucket only. See the `Cloud.File.Storage.Manager.GoogleCloudStorage` project README for the full details (authentication modes, least-privilege setup, and signed URLs).

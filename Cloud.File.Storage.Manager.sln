@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.2.32516.85
+# Visual Studio Version 18
+VisualStudioVersion = 18.7.11903.348 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cloud.File.Storage.Manager.Common", "Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj", "{C080EEA5-E62D-4929-8798-F27A8BB76FEC}"
 EndProject
@@ -16,6 +16,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cloud.File.Storage.Manager.Box", "Cloud.File.Storage.Manager.Box\Cloud.File.Storage.Manager.Box.csproj", "{366B8EA9-3135-42D2-8E81-6D3D7680023F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cloud.File.Storage.Manager.SharePoint", "Cloud.File.Storage.Manager.SharePoint\Cloud.File.Storage.Manager.SharePoint.csproj", "{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cloud.File.Storage.Manager.GoogleCloudStorage", "Cloud.File.Storage.Manager.GoogleCloudStorage\Cloud.File.Storage.Manager.GoogleCloudStorage.csproj", "{7D9E2F1A-3B4C-4D5E-6F70-8A9B0C1D2E3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cloud.File.Storage.Manager.Tests", "Cloud.File.Storage.Manager.Tests\Cloud.File.Storage.Manager.Tests.csproj", "{1E2D3C4B-5A69-4788-9697-A5B4C3D2E1F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +55,14 @@ Global
 		{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37A9C10B-3DE5-4CA8-9193-3D91C4D9258F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D9E2F1A-3B4C-4D5E-6F70-8A9B0C1D2E3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D9E2F1A-3B4C-4D5E-6F70-8A9B0C1D2E3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D9E2F1A-3B4C-4D5E-6F70-8A9B0C1D2E3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D9E2F1A-3B4C-4D5E-6F70-8A9B0C1D2E3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E2D3C4B-5A69-4788-9697-A5B4C3D2E1F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E2D3C4B-5A69-4788-9697-A5B4C3D2E1F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E2D3C4B-5A69-4788-9697-A5B4C3D2E1F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E2D3C4B-5A69-4788-9697-A5B4C3D2E1F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
