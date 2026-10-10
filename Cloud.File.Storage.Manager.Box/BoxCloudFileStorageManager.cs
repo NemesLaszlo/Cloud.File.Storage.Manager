@@ -23,6 +23,8 @@ namespace Cloud.File.Storage.Manager.Box
 
         private const long CHUNKED_UPLOAD_THRESHOLD = 20_000_000; // 20MB minimum for Box chunked uploads
 
+        private static readonly string[] ItemFields = { "type", "id", "name", "size", "modified_at", "content_modified_at" };
+
         public BoxCloudFileStorageManager(BoxCloudFileStorageManagerOptions options) : base(options)
         {
             if (string.IsNullOrEmpty(options.ClientId)) throw new ArgumentException("ClientId is required");
@@ -35,7 +37,7 @@ namespace Cloud.File.Storage.Manager.Box
                 options.ClientId,
                 options.ClientSecret,
                 options.EnterpriseId,
-                options.PrivateKey,
+                normalizePrivateKey(options.PrivateKey),
                 options.Passphrase,
                 options.PublicKeyId);
 
@@ -44,6 +46,8 @@ namespace Cloud.File.Storage.Manager.Box
             initializeOAuthSessionAsync().Wait();
             Client = jwtAuth.AdminClient(accessToken);
         }
+
+        internal static string normalizePrivateKey(string pem) => normalizePem(pem);
 
         private async Task initializeOAuthSessionAsync()
         {
@@ -72,56 +76,75 @@ namespace Cloud.File.Storage.Manager.Box
             }
         }
 
+        private sealed class BoxRootFolder : BoxFolder
+        {
+            public BoxRootFolder(string id)
+            {
+                Id = id;
+                Type = "folder";
+            }
+        }
+
+        private async Task<BoxItem> findChild(string parentId, string name)
+        {
+            int offset = 0;
+            const int limit = 500;
+
+            while (true)
+            {
+                try
+                {
+                    var items = await Client.FoldersManager.GetFolderItemsAsync(parentId, limit, offset, ItemFields);
+                    var match = items.Entries.FirstOrDefault(e => e.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                        return match;
+
+                    offset += limit;
+                    if (offset >= items.TotalCount)
+                        return null;
+                }
+                catch (BoxException ex)
+                {
+                    throw new BoxException($"Box API error while resolving path segment '{name}': {ex.Message}", ex);
+                }
+            }
+        }
+
+        // Zero segments resolve to the provider root folder.
         private async Task<(BoxItem item, bool isFolder)> resolvePath(string[] pathSegments, bool expectFolder = false)
         {
-            string parentId = RootFolderId;
-            BoxItem current = null;
+            BoxItem current = new BoxRootFolder(RootFolderId);
 
             foreach (var segment in pathSegments)
             {
-                bool found = false;
-                int offset = 0;
-                const int limit = 500;
-
-                while (!found)
-                {
-                    try
-                    {
-                        var items = await Client.FoldersManager.GetFolderItemsAsync(parentId, limit, offset);
-                        foreach (var entry in items.Entries)
-                        {
-                            if (entry.Name.Equals(segment, StringComparison.OrdinalIgnoreCase))
-                            {
-                                current = entry;
-                                parentId = entry.Id;
-                                found = true;
-                                break;
-                            }
-                        }
-
-                        if (found)
-                            break;
-
-                        offset += limit;
-                        if (offset >= items.TotalCount)
-                            break;
-                    }
-                    catch (BoxException ex)
-                    {
-                        throw new BoxException($"Box API error while resolving path segment '{segment}': {ex.Message}", ex);
-                    }
-                    catch (Exception)
-                    {
-                        throw;
-                    }
-                }
-                if (!found)
+                if (current.Type != "folder")
+                    return (null, false);
+                current = await findChild(current.Id, segment);
+                if (current == null)
                     return (null, false);
             }
-            bool isFolder = current?.Type == "folder";
+            bool isFolder = current.Type == "folder";
             if (expectFolder && !isFolder)
                 return (null, false);
             return (current, isFolder);
+        }
+
+        private bool isProviderRoot(string[] absolutePathSegments, BoxItem item = null)
+        {
+            return absolutePathSegments.Length <= Options.RootDirectorySegments.Length || item?.Id == RootFolderId;
+        }
+
+        private static void refuseProviderRoot()
+        {
+            throw new InvalidOperationException("The provider root cannot be deleted or modified.");
+        }
+
+        private DateTimeOffset lastModified(BoxItem item)
+        {
+            return item.ModifiedAt
+                ?? (item as BoxFile)?.ContentModifiedAt
+                ?? (item as BoxFolder)?.ContentModifiedAt
+                ?? DefaultDateTime;
         }
 
         protected override async Task<IFileInfo> getFileInfoAsync(params string[] absolutePathSegments)
@@ -130,32 +153,35 @@ namespace Cloud.File.Storage.Manager.Box
             {
                 await ensureValidSessionAsync();
                 var (file, isFolder) = await resolvePath(absolutePathSegments);
+                var name = absolutePathSegments.LastOrDefault() ?? "";
                 if (file == null)
-                    return new FileInfo(this, false, 0, string.Join("/", absolutePathSegments), absolutePathSegments.Last(),
+                    return new FileInfo(this, false, 0, string.Join("/", absolutePathSegments), name,
                         DefaultDateTime, false, getRelativeSegments(absolutePathSegments));
 
                 long fileSize = -1;
-                DateTime modifiedAt = file.ModifiedAt?.DateTime ?? DefaultDateTime;
+                var modifiedAt = lastModified(file);
                 if (!isFolder && file.Type == "file")
                 {
-                    // Get complete file information from Box API
-                    try
+                    fileSize = file.Size ?? 0;
+                    if (file.Size == null || file.ModifiedAt == null)
                     {
-                        var completeFileInfo = await Client.FilesManager.GetInformationAsync(file.Id);
-                        fileSize = completeFileInfo.Size ?? 0;
-                        modifiedAt = completeFileInfo.ModifiedAt?.DateTime ?? modifiedAt;
-                    }
-                    catch
-                    {
-                        // Fallback to the size from the folder listing (which might be null)
-                        fileSize = (file as BoxFile)?.Size ?? 0;
+                        try
+                        {
+                            var completeFileInfo = await Client.FilesManager.GetInformationAsync(file.Id);
+                            fileSize = completeFileInfo.Size ?? fileSize;
+                            modifiedAt = completeFileInfo.ModifiedAt ?? modifiedAt;
+                        }
+                        catch
+                        {
+                            // Keep the values from the folder listing
+                        }
                     }
                 }
                 return new FileInfo(this,
                     !isFolder,
                     isFolder ? -1 : fileSize,
                     string.Join("/", absolutePathSegments),
-                    absolutePathSegments.Last(),
+                    name,
                     modifiedAt,
                     isFolder,
                     getRelativeSegments(absolutePathSegments));
@@ -185,16 +211,16 @@ namespace Cloud.File.Storage.Manager.Box
 
                 while (true)
                 {
-                    var items = await Client.FoldersManager.GetFolderItemsAsync(folder.Id, limit, offset);
+                    var items = await Client.FoldersManager.GetFolderItemsAsync(folder.Id, limit, offset, ItemFields);
 
                     foreach (var item in items.Entries)
                     {
                         results.Add(new FileInfo(this,
-                            item.Type == "file",
+                            item.Type == "file" || item.Type == "folder",
                             item is BoxFile f ? f.Size ?? 0 : -1,
                             item.Name,
                             item.Name,
-                            item.ModifiedAt?.DateTime ?? DefaultDateTime,
+                            lastModified(item),
                             item.Type == "folder",
                             getRelativeSegments(absolutePathSegments.Concat(new[] { item.Name }).ToArray())));
                     }
@@ -225,7 +251,15 @@ namespace Cloud.File.Storage.Manager.Box
                     throw new FileNotFoundException($"File not found: {string.Join("/", absolutePathSegments)}");
                 using var downloadStream = await Client.FilesManager.DownloadAsync(boxFile.Id);
                 var fileStream = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
-                await downloadStream.CopyToAsync(fileStream);
+                try
+                {
+                    await downloadStream.CopyToAsync(fileStream);
+                }
+                catch
+                {
+                    await fileStream.DisposeAsync();
+                    throw;
+                }
                 fileStream.Position = 0;
                 return fileStream;
             }
@@ -243,11 +277,12 @@ namespace Cloud.File.Storage.Manager.Box
         {
             try
             {
+                if (isProviderRoot(absolutePathSegments))
+                    refuseProviderRoot();
+
                 await ensureValidSessionAsync();
-                var (file, isFolder) = await resolvePath(absolutePathSegments);
-                var parentId = RootFolderId;
-                if (absolutePathSegments.Length > 1)
-                    parentId = await ensureParentDirectoriesExist(absolutePathSegments[..^1]);
+                var parentId = await ensureParentDirectoriesExist(absolutePathSegments[..^1]);
+                var file = await findChild(parentId, absolutePathSegments[^1]);
 
                 if (file is BoxFile existingFile)
                 {
@@ -275,14 +310,13 @@ namespace Cloud.File.Storage.Manager.Box
         private async Task<string> ensureParentDirectoriesExist(string[] pathSegments)
         {
             var currentParentId = RootFolderId;
-            for (int i = 0; i < pathSegments.Length; i++)
+            foreach (var segmentName in pathSegments)
             {
-                var segmentName = pathSegments[i];
-                var (existingItem, isFolder) = await resolvePath(pathSegments[0..(i + 1)]);
+                var existingItem = await findChild(currentParentId, segmentName);
 
                 if (existingItem != null)
                 {
-                    if (!isFolder)
+                    if (existingItem.Type != "folder")
                         throw new InvalidOperationException($"Path segment '{segmentName}' exists but is a file, not a folder");
                     currentParentId = existingItem.Id;
                 }
@@ -304,10 +338,8 @@ namespace Cloud.File.Storage.Manager.Box
         {
             if (!fileStream.CanSeek)
             {
-                using var memoryStream = new MemoryStream();
-                await fileStream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-                await uploadNewFileInternal(fileName, parentId, memoryStream);
+                await using var spooled = await BoxUploadBuffer.SpoolAsync(fileStream);
+                await uploadNewFileInternal(fileName, parentId, spooled);
             }
             else
             {
@@ -343,10 +375,8 @@ namespace Cloud.File.Storage.Manager.Box
         {
             if (!fileStream.CanSeek)
             {
-                using var memoryStream = new MemoryStream();
-                await fileStream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-                await uploadNewVersionInternal(fileId, fileName, memoryStream);
+                await using var spooled = await BoxUploadBuffer.SpoolAsync(fileStream);
+                await uploadNewVersionInternal(fileId, fileName, spooled);
             }
             else
             {
@@ -370,72 +400,26 @@ namespace Cloud.File.Storage.Manager.Box
 
         private async Task appendToExistingFile(BoxFile existingFile, Stream newContent)
         {
-            // Get existing file size first to determine strategy
-            var fileInfo = await Client.FilesManager.GetInformationAsync(existingFile.Id);
-            long existingSize = fileInfo.Size ?? 0;
-            long newContentSize = newContent.CanSeek ? newContent.Length : await getStreamLength(newContent);
-            long totalSize = existingSize + newContentSize;
-
-            // For small files or when total size is manageable, use memory
-            if (totalSize < CHUNKED_UPLOAD_THRESHOLD)
-                await appendUsingMemoryStream(existingFile, newContent);
-            else
-                // For large files, use temporary file to avoid memory issues
-                await appendUsingTempFile(existingFile, newContent);
-        }
-
-        private async Task appendUsingMemoryStream(BoxFile existingFile, Stream newContent)
-        {
-            using var existingContent = await Client.FilesManager.DownloadAsync(existingFile.Id);
-            using var combinedStream = new MemoryStream();
-            await existingContent.CopyToAsync(combinedStream);
-            await newContent.CopyToAsync(combinedStream);
-            combinedStream.Position = 0;
-            await uploadNewVersion(existingFile.Id, existingFile.Name, combinedStream);
-        }
-
-        private async Task appendUsingTempFile(BoxFile existingFile, Stream newContent)
-        {
-            using var tempFileStream = new FileStream(
-                Path.GetTempFileName(),
-                FileMode.OpenOrCreate,
-                FileAccess.ReadWrite,
-                FileShare.None,
-                4096,
-                FileOptions.DeleteOnClose | FileOptions.SequentialScan);
-
-            // Download existing content to temp file
+            Stream combined;
             using (var existingContent = await Client.FilesManager.DownloadAsync(existingFile.Id))
-            {
-                await existingContent.CopyToAsync(tempFileStream);
-            }
-            await newContent.CopyToAsync(tempFileStream);
+                combined = await BoxUploadBuffer.CombineAsync(existingContent, newContent);
 
-            tempFileStream.Position = 0;
-            await uploadNewVersion(existingFile.Id, existingFile.Name, tempFileStream);
-        }
-
-        private async Task<long> getStreamLength(Stream stream)
-        {
-            if (stream.CanSeek)
-                return stream.Length;
-            // For non-seekable streams, we need to read to determine length
-            using var tempStream = new MemoryStream();
-            var originalPosition = stream.CanSeek ? stream.Position : 0;
-            await stream.CopyToAsync(tempStream);
-            // Reset original stream if possible
-            if (stream.CanSeek)
-                stream.Position = originalPosition;
-            return tempStream.Length;
+            await using (combined)
+                await uploadNewVersionInternal(existingFile.Id, existingFile.Name, combined);
         }
 
         protected override async Task<bool> deleteAsync(params string[] absolutePathSegments)
         {
             try
             {
+                if (isProviderRoot(absolutePathSegments))
+                    refuseProviderRoot();
+
                 await ensureValidSessionAsync();
                 var (item, isFolder) = await resolvePath(absolutePathSegments);
                 if (item == null) return false;
+                if (isProviderRoot(absolutePathSegments, item))
+                    refuseProviderRoot();
 
                 if (isFolder)
                     await Client.FoldersManager.DeleteAsync(item.Id, recursive: true);
@@ -458,10 +442,15 @@ namespace Cloud.File.Storage.Manager.Box
         {
             try
             {
+                if (isProviderRoot(oldSegments) || isProviderRoot(newSegments))
+                    refuseProviderRoot();
+
                 await ensureValidSessionAsync();
                 var (item, _) = await resolvePath(oldSegments);
                 if (item == null)
                     throw new FileNotFoundException($"Source item not found: {string.Join("/", oldSegments)}");
+                if (isProviderRoot(oldSegments, item))
+                    refuseProviderRoot();
 
                 var (newParent, isFolder) = await resolvePath(newSegments[..^1], expectFolder: true);
                 if (!isFolder)

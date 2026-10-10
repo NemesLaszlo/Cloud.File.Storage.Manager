@@ -20,7 +20,7 @@ Let's add a section to the `appsettings.json`
 In the application, configure this settings part
 
 ```cs
-services.AddSingleton<ICloudFileStorageManager, BoxFileStorageManager>(services => new BoxFileStorageManager(new BoxFileStorageManagerOptions()
+services.AddSingleton<ICloudFileStorageManager, BoxCloudFileStorageManager>(services => new BoxCloudFileStorageManager(new BoxCloudFileStorageManagerOptions()
 {
     ClientId = config.GetSection("BoxStorageSettings").GetValue<string>("ClientId"),
     ClientSecret = config.GetSection("BoxStorageSettings").GetValue<string>("ClientSecret"),
@@ -32,6 +32,48 @@ services.AddSingleton<ICloudFileStorageManager, BoxFileStorageManager>(services 
 }));
 
 ```
+
+`PrivateKey` is the PEM private key from the Box config file. A key copied with escaped newlines (`\n` or `\r\n` written as text, as it appears in the downloaded JSON config file) is accepted and converted to real line breaks.
+
+`RootFolderId` is the id of the Box folder that acts as the root of the storage; `"0"` (the default when it is not set) is the root of the service account.
+
+## Behaviour
+
+### Paths
+
+Paths are relative to `RootFolderId` (and to `RootDirectoryPath`, when set). Both `/` and `\` separate segments, and name matching is case-insensitive.
+
+A segment is rejected with an `ArgumentException` when it is empty or whitespace, consists only of dots and spaces, contains a control character, or does so after percent-decoding. A segment whose percent-decoded form contains `/` or `\` is rejected as well.
+
+Zero segments address the root folder itself: `GetDirectoryContents()` lists the root folder. `ReadFile` and `GetDownloadUrl` need at least one segment.
+
+### Root folder protection
+
+The root folder (`RootFolderId`, or `RootDirectoryPath` when set) cannot be deleted, moved, renamed or overwritten. These calls throw an `InvalidOperationException`, also when a path resolves to the root folder by id.
+
+### Uploads
+
+- Files below 20 MB are uploaded in a single request, larger files with a Box chunked upload session.
+- Non-seekable streams (for example a network or request stream) are first spooled to a temporary file, so the size is known and the content is not held in memory. The temporary file is deleted when the upload finishes or fails.
+- `UpdateFileMode.Append` downloads the current content, combines it with the new content in a temporary file and uploads the result as a new version of the file.
+- Missing parent folders are created on upload. When a path segment exists as a file, the upload fails with an `InvalidOperationException`.
+
+### Listing and file information
+
+- `GetDirectoryContents` pages through the folder and returns files and folders with their real sizes and modification times. Folders are reported with `Exists = true` and `IsDirectory = true`.
+- The modification time is the Box `modified_at` value, falling back to `content_modified_at`.
+
+### Reading
+
+`ReadFile` downloads the file into a temporary file that is deleted when the returned stream is disposed. When the download fails, the temporary file is removed right away.
+
+### Download links
+
+`GetDownloadUrl` returns the temporary direct download link Box generates for the file. Box keeps the link valid for about 15 minutes; the validity argument is ignored. Folders have no download link and throw a `FileNotFoundException`.
+
+### Not supported
+
+`Watch` is not supported and throws a `NotSupportedException`.
 
 ## Images of the Box side configuration
 
