@@ -1,10 +1,16 @@
 ﻿namespace Cloud.File.Storage.Manager.Common
 {
+    /// <summary>
+    /// A local copy of a provider file. Unless read-only, the contents are uploaded to the provider when the stream is disposed,
+    /// including a dispose after an exception (partially written content is uploaded).
+    /// </summary>
     public class LocalFileStream : Stream
     {
         private Stream Stream { get; }
+        private readonly string[] targetFilePathSegments;
         public ICloudFileStorageManager Provider { get; }
-        public string[] TargetFilePathSegments { get; }
+        /// <summary>The absolute target segments. Returns a copy; the segments are fixed when the stream is created.</summary>
+        public string[] TargetFilePathSegments => (string[])targetFilePathSegments?.Clone();
         public bool ReadOnly { get; }
 
         private bool disposeEventCalled = false;
@@ -13,22 +19,29 @@
         {
             Provider = provider;
             ReadOnly = readOnly;
-            TargetFilePathSegments = targetFilePathSegments;
+            this.targetFilePathSegments = (string[])targetFilePathSegments?.Clone();
             Stream = str;
         }
 
         /// <summary>
-        /// Gracefully (async) disposes the stream, that will cause the provider to finalize it
+        /// Gracefully (async) disposes the stream, that will cause the provider to finalize it.
+        /// A writeable stream is uploaded also when it is disposed after an exception, so partially written content is uploaded.
         /// </summary>
         /// <returns></returns>
         public async Task DisposeAsync()
         {
-            if (!ReadOnly && !disposeEventCalled)
+            try
             {
-                disposeEventCalled = true;
-                await Provider.OnLocalFileStreamDisposingAsync(this);
+                if (!ReadOnly && !disposeEventCalled)
+                {
+                    disposeEventCalled = true;
+                    await Provider.OnLocalFileStreamDisposingAsync(this);
+                }
             }
-            Stream.Dispose();
+            finally
+            {
+                Stream.Dispose();
+            }
         }
 
         protected override void Dispose(bool disposing)

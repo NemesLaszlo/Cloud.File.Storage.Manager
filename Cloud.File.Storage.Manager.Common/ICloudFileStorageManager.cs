@@ -19,6 +19,10 @@ namespace Cloud.File.Storage.Manager.Common
         /// <summary>Locate a file at the given path.</summary>
         /// <param name="subpath">Relative path that identifies the file.</param>
         /// <returns>The file information. Caller must check Exists property.</returns>
+        /// <remarks>
+        /// For a directory, Physical, Azure Blob and GCS return Exists = false and IsDirectory = false, S3 and Box return
+        /// Exists = false and IsDirectory = true, Minio and SharePoint return Exists = true and IsDirectory = true.
+        /// </remarks>
         Task<IFileInfo> GetFileInfoAsync(params string[] pathSegments);
 
         /// <summary>Enumerate a directory at the given path, if any.</summary>
@@ -34,6 +38,10 @@ namespace Cloud.File.Storage.Manager.Common
         /// <summary>Enumerate a directory at the given path, if any.</summary>
         /// <param name="subpath">Relative path that identifies the directory.</param>
         /// <returns>Returns the contents of the directory.</returns>
+        /// <remarks>
+        /// Lists one level only. Directory entries have Exists = true, IsDirectory = true and Length = -1,
+        /// and on object stores (S3, Minio, GCS, Azure Blob) a placeholder LastModified.
+        /// </remarks>
         Task<IDirectoryContents> GetDirectoryContentsAsync(params string[] pathSegments);
 
         /// <summary>
@@ -88,6 +96,12 @@ namespace Cloud.File.Storage.Manager.Common
         /// </summary>
         /// <returns></returns>
         Stream ReadFile(IFileInfo file);
+
+        /// <summary>
+        /// False when the provider cannot issue download URLs (Physical); GetDownloadUrl then throws NotSupportedException.
+        /// Box and SharePoint links expire after the service's own fixed lifetime regardless of the requested validity.
+        /// </summary>
+        bool SupportsDownloadUrl => true;
 
         /// <summary>
         /// Generate a presigned URL that you can give to others so that they can retrieve an object.
@@ -233,7 +247,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="readOnly">True to open a read only stream (no commit is done to the provider after file is closed)</param>
         /// <param name="subpath">The path to the file</param>
         /// <returns>The file stream</returns>
-        /// <exception cref="System.IO.FileNotFoundException"></exception>
+        /// <exception cref="System.IO.FileNotFoundException">Read-only stream of a missing file on the physical provider. Other providers return an empty stream for a missing file.</exception>
         Task<LocalFileStream> CreateLocalFileStreamAsync(bool readOnly, string subpath);
 
         /// <summary>
@@ -242,7 +256,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath">The path to the file</param>
         ///  /// <param name="readOnly">True to open a read only stream (no commit is done to the provider after file is closed)</param>
         /// <returns>The file stream</returns>
-        /// <exception cref="System.IO.FileNotFoundException"></exception>
+        /// <exception cref="System.IO.FileNotFoundException">Read-only stream of a missing file on the physical provider. Other providers return an empty stream for a missing file.</exception>
         LocalFileStream CreateLocalFileStream(bool readOnly, string subpath);
 
         /// <summary>
@@ -251,7 +265,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath">The path to the file</param>
         ///  /// <param name="readOnly">True to open a read only stream (no commit is done to the provider after file is closed)</param>
         /// <returns>The file stream</returns>
-        /// <exception cref="System.IO.FileNotFoundException"></exception>
+        /// <exception cref="System.IO.FileNotFoundException">Read-only stream of a missing file on the physical provider. Other providers return an empty stream for a missing file.</exception>
         Task<LocalFileStream> CreateLocalFileStreamAsync(bool readOnly, params string[] pathSegments);
 
         /// <summary>
@@ -260,7 +274,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath">The path to the file</param>
         ///  /// <param name="readOnly">True to open a read only stream (no commit is done to the provider after file is closed)</param>
         /// <returns>The file stream</returns>
-        /// <exception cref="System.IO.FileNotFoundException"></exception>
+        /// <exception cref="System.IO.FileNotFoundException">Read-only stream of a missing file on the physical provider. Other providers return an empty stream for a missing file.</exception>
         LocalFileStream CreateLocalFileStream(bool readOnly, params string[] pathSegments);
 
         /// <summary>
@@ -269,7 +283,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath">The path to the file</param>
         ///  /// <param name="readOnly">True to open a read only stream (no commit is done to the provider after file is closed)</param>
         /// <returns>The file stream</returns>
-        /// <exception cref="System.IO.FileNotFoundException"></exception>
+        /// <exception cref="System.IO.FileNotFoundException">Read-only stream of a missing file on the physical provider. Other providers return an empty stream for a missing file.</exception>
         Task<LocalFileStream> CreateLocalFileStreamAsync(bool readOnly, IFileInfo file);
 
         /// <summary>
@@ -278,7 +292,7 @@ namespace Cloud.File.Storage.Manager.Common
         /// <param name="subpath">The path to the file</param>
         ///  /// <param name="readOnly">True to open a read only stream (no commit is done to the provider after file is closed)</param>
         /// <returns>The file stream</returns>
-        /// <exception cref="System.IO.FileNotFoundException"></exception>
+        /// <exception cref="System.IO.FileNotFoundException">Read-only stream of a missing file on the physical provider. Other providers return an empty stream for a missing file.</exception>
         LocalFileStream CreateLocalFileStream(bool readOnly, IFileInfo file);
 
         /// <summary>
