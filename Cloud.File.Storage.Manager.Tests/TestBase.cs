@@ -168,7 +168,11 @@ namespace Cloud.File.Storage.Manager.Tests
             entry = await p.GetFileInfoAsync(name);
             if (!entry.Exists)
                 Assert.Fail("Entry was Deleted after cache writeback");
-            Assert.IsTrue(entry.CreateReadStream().ReadByte() == 5, "File content was not updated via cacheStream");
+            int firstByte;
+            using (var read = entry.CreateReadStream())
+                firstByte = read.ReadByte();
+            await p.DeleteAsync(name);
+            Assert.IsTrue(firstByte == 5, "File content was not updated via cacheStream");
 
         }
 
@@ -208,6 +212,10 @@ namespace Cloud.File.Storage.Manager.Tests
             catch (NotSupportedException)
             {
 
+            }
+            finally
+            {
+                await p.DeleteAsync(name);
             }
 
         }

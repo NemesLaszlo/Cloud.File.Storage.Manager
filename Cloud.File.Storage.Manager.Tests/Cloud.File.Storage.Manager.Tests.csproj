@@ -23,7 +23,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.AmazonS3\Cloud.File.Storage.Manager.AmazonS3.csproj" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.AzureBlob\Cloud.File.Storage.Manager.AzureBlob.csproj" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Box\Cloud.File.Storage.Manager.Box.csproj" />
     <ProjectReference Include="..\Cloud.File.Storage.Manager.GoogleCloudStorage\Cloud.File.Storage.Manager.GoogleCloudStorage.csproj" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Minio\Cloud.File.Storage.Manager.Minio.csproj" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Physical\Cloud.File.Storage.Manager.Physical.csproj" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.SharePoint\Cloud.File.Storage.Manager.SharePoint.csproj" />
   </ItemGroup>
 
 </Project>
