@@ -3,22 +3,31 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations for SharePoint like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
     <PackageProjectUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</RepositoryUrl>
     <PackageTags>CloudStorage, Storage, FileOperations, SharePoint, SharePoint-Storage</PackageTags>
-    <PackageReleaseNotes>- Handling absolute and relative path edge-cases if working directory is configured</PackageReleaseNotes>
+    <PackageReleaseNotes>- Listing no longer returns the first page twice
+- Work folder and provider root protected against delete, move and overwrite
+- Path segments containing a colon rejected
+- Folder creation errors keep the inner exception
+- Microsoft.Graph.Core 3.2.6</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.14.2" />
     <PackageReference Include="Microsoft.Graph" Version="5.85.0" />
-    <PackageReference Include="Microsoft.Graph.Core" Version="3.2.4" />
-    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Graph.Core" Version="3.2.6" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.1.0" Condition="'$(UseLocalCommon)' != 'true'" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UseLocalCommon)' == 'true'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cloud.File.Storage.Manager.Tests" />
   </ItemGroup>
 
   <ItemGroup>
