@@ -10,15 +10,19 @@
     <RepositoryUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</RepositoryUrl>
     <PackageTags>CloudStorage, Storage, FileOperations, Amazon, Amazon S3, S3</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>2.0.0</Version>
-    <PackageReleaseNotes>- .NET 8 upgrade
-- Package upgrade
-- Update Cloud.File.Storage.Manager.Common 2.0.0 -&gt; 3.0.0</PackageReleaseNotes>
+    <Version>2.1.0</Version>
+    <PackageReleaseNotes>- Exact file info via a single listing, no GetObject or ListVersions permission needed
+- One-level folder listings with folder prefixes
+- Folder deletes in pages of 1000 keys, failed keys raise an IOException
+- Delete returns false when nothing was found, provider root protected against delete, move and overwrite
+- ReadFileVersionAsync for versioned reads with root-relative paths, ReadFileAsync(versionId, ...) obsolete and kept under the root
+- Update Cloud.File.Storage.Manager.Common 3.0.0 -&gt; 3.1.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="3.7.305.22" />
-    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.0.0" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.1.0" Condition="'$(UseLocalCommon)' != 'true'" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UseLocalCommon)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
