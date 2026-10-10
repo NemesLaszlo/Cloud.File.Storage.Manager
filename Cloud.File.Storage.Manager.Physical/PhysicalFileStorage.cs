@@ -4,11 +4,22 @@ using Microsoft.Extensions.Primitives;
 
 namespace Cloud.File.Storage.Manager.Physical
 {
+    /// <summary>
+    /// Root containment is path based. Symbolic links and junctions inside the root are refused unless
+    /// <see cref="PhysicalFileStorageOptions.AllowLinks"/> is set, in which case they are followed.
+    /// <see cref="IFileInfo.PhysicalPath"/> and the <see cref="FileNotFoundException.FileName"/> of a missing file carry the full server path.
+    /// </summary>
     public class PhysicalFileStorage : CloudFileStorageManager<PhysicalFileStorageOptions>
     {
         private readonly DateTime DefaultDateTime = new DateTime(1970, 1, 1, 0, 0, 0);
 
-        private readonly PhysicalFileProvider _provider;
+        private static readonly string[] ReservedNames =
+        {
+            "CON", "PRN", "AUX", "NUL",
+            "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³",
+            "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³"
+        };
+
         private PhysicalFileStorageOptions O { get; }
 
         public PhysicalFileStorage(string rootPath) : this(new PhysicalFileStorageOptions() { RootDirectoryPath = rootPath })
@@ -41,7 +52,62 @@ namespace Cloud.File.Storage.Manager.Physical
 
         private string path(string[] p)
         {
-            return string.Join(Path.DirectorySeparatorChar.ToString(), p).Replace("root:", "");
+            var full = fullPath(p);
+            var root = fullPath(O.RootDirectorySegments);
+            if (string.Equals(full, root, PathComparison))
+                return full;
+            var rootPrefix = Path.EndsInDirectorySeparator(root) ? root : root + Path.DirectorySeparatorChar;
+            if (!full.StartsWith(rootPrefix, PathComparison))
+                throw new ArgumentException("The path resolves outside the provider root.");
+            if (!O.AllowLinks)
+                ensureNoLinks(rootPrefix, full);
+            return full;
+        }
+
+        // Walks the existing components strictly below the root. Only symbolic links and junctions count;
+        // other reparse points (deduplicated files, cloud placeholders) have no link target.
+        private static void ensureNoLinks(string rootPrefix, string full)
+        {
+            var current = rootPrefix;
+            foreach (var part in full.Substring(rootPrefix.Length).Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                current = Path.Combine(current, part);
+                FileSystemInfo info = Directory.Exists(current) ? new DirectoryInfo(current) : new System.IO.FileInfo(current);
+                if (info.LinkTarget != null)
+                    throw new ArgumentException("Links inside the provider root are not allowed.");
+                if (!info.Exists)
+                    return;
+            }
+        }
+
+        private static string fullPath(string[] p)
+        {
+            var joined = string.Join(Path.DirectorySeparatorChar.ToString(), p).Replace("root:", "");
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(joined + Path.DirectorySeparatorChar));
+        }
+
+        private bool isRoot(string p)
+        {
+            return string.Equals(p, fullPath(O.RootDirectorySegments), PathComparison);
+        }
+
+        private static StringComparison PathComparison => OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+        /// <summary>
+        /// Rejects ':', names ending in '.' or ' ', and Windows reserved device names with or without an extension, on every platform.
+        /// </summary>
+        protected override bool isSegmentAllowed(string part)
+        {
+            if (part.IndexOf(':') >= 0 || part.EndsWith(".") || part.EndsWith(" "))
+                return false;
+            var dot = part.IndexOf('.');
+            var stem = (dot < 0 ? part : part.Substring(0, dot)).TrimEnd(' ');
+            return !ReservedNames.Contains(stem, StringComparer.OrdinalIgnoreCase);
+        }
+
+        public override async Task OnLocalFileStreamDisposingAsync(LocalFileStream stream)
+        {
+            return;
         }
 
         protected override async Task<IFileInfo> getFileInfoAsync(params string[] absolutePathSegments)
@@ -73,8 +139,9 @@ namespace Cloud.File.Storage.Manager.Physical
         protected override async Task<Stream> readFileAsync(params string[] absolutePathSegments)
         {
             string p = path(absolutePathSegments);
-            Directory.CreateDirectory(Path.GetDirectoryName(p));
-            return new FileStream(p, FileMode.OpenOrCreate, FileAccess.Read);
+            if (!System.IO.File.Exists(p))
+                throw new FileNotFoundException("The file does not exist.", p);
+            return new FileStream(p, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
 
         protected override async Task updateFileAsync(Stream contents, UpdateFileMode mode, params string[] absolutePathSegments)
@@ -87,13 +154,18 @@ namespace Cloud.File.Storage.Manager.Physical
 
         protected override Task move(string[] oldSegments, string[] newSegments)
         {
-            System.IO.File.Move(path(oldSegments), path(newSegments));
+            var newPath = path(newSegments);
+            var oldPath = path(oldSegments);
+            Directory.CreateDirectory(Path.GetDirectoryName(newPath));
+            System.IO.File.Move(oldPath, newPath);
             return Task.CompletedTask;
         }
 
         protected override async Task<bool> deleteAsync(params string[] absolutePathSegments)
         {
             var p = path(absolutePathSegments);
+            if (isRoot(p))
+                throw new InvalidOperationException("The provider root cannot be deleted or modified.");
             var ret = false;
             if (System.IO.File.Exists(p))
             {
@@ -111,10 +183,18 @@ namespace Cloud.File.Storage.Manager.Physical
         protected override async Task<LocalFileStream> createLocalFileStreamAsync(bool readOnly, params string[] absolutePathSegments)
         {
             var p = path(absolutePathSegments);
+            if (readOnly)
+            {
+                if (!System.IO.File.Exists(p))
+                    throw new FileNotFoundException("The file does not exist.", p);
+                return new LocalFileStream(new FileStream(p, FileMode.Open, FileAccess.Read, FileShare.ReadWrite), this, true, absolutePathSegments);
+            }
             Directory.CreateDirectory(Path.GetDirectoryName(p));
-            return new LocalFileStream(new FileStream(p, FileMode.OpenOrCreate, readOnly ? FileAccess.Read : FileAccess.ReadWrite, readOnly ? FileShare.ReadWrite : FileShare.None),
-                this, readOnly, absolutePathSegments);
+            return new LocalFileStream(new FileStream(p, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None),
+                this, false, absolutePathSegments);
         }
+
+        public override bool SupportsDownloadUrl => false;
 
         protected override Task<string> getDownloadUrl(string[] absolutePathSegments, TimeSpan validity)
         {

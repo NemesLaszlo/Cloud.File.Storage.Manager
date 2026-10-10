@@ -21,5 +21,11 @@ namespace Cloud.File.Storage.Manager.Physical
 
             }
         }
+
+        /// <summary>
+        /// Allows symbolic links and junctions inside the provider root. When false (the default), a path whose existing
+        /// components below the root include a link is refused; the root itself may be a link.
+        /// </summary>
+        public bool AllowLinks { get; set; }
     }
 }
