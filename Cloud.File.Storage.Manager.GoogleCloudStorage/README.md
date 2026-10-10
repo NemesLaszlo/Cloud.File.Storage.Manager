@@ -37,9 +37,11 @@ services.AddSingleton<ICloudFileStorageManager, GoogleCloudStorageFileStorageMan
 
 Credentials are resolved in this order, so the same manager works for UI-driven setup, `appsettings.json`, VMs, and Kubernetes:
 
-1. **Discrete service account fields** — set `ClientEmail` + `PrivateKey` (optionally `ProjectId`). These come straight from the `client_email` and `private_key` fields of a service account key. This is the recommended way to wire up a UI form (no JSON blob to paste).
+1. **Discrete service account fields** — set `ClientEmail` + `PrivateKey` (optionally `ProjectId`). These come straight from the `client_email` and `private_key` fields of a service account key. This is the recommended way to wire up a UI form (no JSON blob to paste). The private key may contain escaped newlines (a literal `\n`, as stored in environment variables and single-line secrets); they are turned into real line breaks when the credential is built, the configured value itself is not modified.
 2. **Whole key JSON** — set `CredentialsJson` to the entire service account key JSON as one string. Useful when the key is pulled as a single blob from a secret store (Secret Manager / Key Vault).
 3. **Application Default Credentials (ADC)** — leave every credential field empty. On GKE/GCE this resolves via **Workload Identity** / the metadata server, which keeps secrets out of the configuration entirely. This is the recommended enterprise setup.
+
+ADC is the fallback whenever neither `ClientEmail` + `PrivateKey` nor `CredentialsJson` is set (a `ClientEmail` without a `PrivateKey` also falls back to ADC). The `UsesApplicationDefaultCredentials` property of the manager is `true` in that case, so the application can show or log which credential is in use.
 
 ```cs
 // Whole-JSON alternative
@@ -69,6 +71,8 @@ new GoogleCloudStorageFileStorageManagerOptions()
 - a service account key (options 1/2 above) — signs locally, no extra permission, or
 - a Workload Identity / impersonated identity holding `iam.serviceAccounts.signBlob` — signs via the IAM API.
 
+With a credential that cannot sign (for example plain user credentials from ADC), `GetDownloadUrl` throws `NotSupportedException`; every other operation keeps working.
+
 ```cs
 var url = await manager.GetDownloadUrlAsync("folder/file.txt", TimeSpan.FromHours(1));
 ```
@@ -79,3 +83,11 @@ var url = await manager.GetDownloadUrlAsync("folder/file.txt", TimeSpan.FromHour
 - **Move** is a server-side copy followed by a delete.
 - **Watch** is not supported (throws `NotSupportedException`), consistent with the Amazon S3 and Azure Blob managers.
 - Large reads are streamed through a temporary file (deleted on close) to keep memory usage flat.
+
+### Listings and deletes
+
+- Listings return one level of the virtual folder hierarchy: the objects directly in the folder and its sub-folders, with paths relative to the root directory. Folders are reported as existing.
+- File info for the bucket root (zero path segments) reports not found; use a listing to inspect the root.
+- Deleting a folder removes every object under it page by page (1000 objects per page, objects already gone are skipped); `Delete` returns `false` when nothing was found.
+- The root directory (the bucket itself or the configured `RootDirectoryPath`) cannot be deleted.
+- Path segments are validated by Cloud.File.Storage.Manager.Common: empty or whitespace segments, segments made only of dots and spaces, control characters and percent-encoded separators are refused with an `ArgumentException`.

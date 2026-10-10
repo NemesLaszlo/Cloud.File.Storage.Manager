@@ -49,7 +49,9 @@ namespace Cloud.File.Storage.Manager.GoogleCloudStorage
 
         /// <summary>
         /// The service account private key in PEM form (the 'private_key' field of a service account
-        /// key). Treated as a secret. Provide together with <see cref="ClientEmail"/>.
+        /// key). Treated as a secret. Provide together with <see cref="ClientEmail"/>. Escaped newline
+        /// sequences (a literal backslash-n, as stored in environment variables) are accepted; the value
+        /// itself is never modified.
         /// </summary>
         public string PrivateKey { get; set; }
 
