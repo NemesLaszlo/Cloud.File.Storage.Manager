@@ -10,17 +10,19 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Minio, Amazon S3, S3</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>2.0.1</Version>
-    <PackageReleaseNotes>- Package version update 
-- Transitive package(s) dependency vulnerability solved</PackageReleaseNotes>
+    <Version>2.1.0</Version>
+    <PackageReleaseNotes>- Minio client 7.0.0, RestSharp dependency removed
+- Exact file info via StatObject, one-level folder listings
+- Folder deletes in checked batches, provider root protected against delete, move and overwrite
+- Bucket created only on writes, reads buffered in a temporary file
+- Presigned download URLs (validity capped at 7 days)
+- HostAndPort may carry an http:// or https:// scheme</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.0.0" />
-    <PackageReference Include="Minio" Version="3.1.1" />
-
-    <!--To solve dependency vulnerability (Transitive packages)-->
-    <PackageReference Include="RestSharp" Version="112.1.0" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.1.0" Condition="'$(UseLocalCommon)' != 'true'" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UseLocalCommon)' == 'true'" />
+    <PackageReference Include="Minio" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>

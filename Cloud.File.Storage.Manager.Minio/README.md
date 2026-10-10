@@ -28,3 +28,12 @@ services.AddSingleton<ICloudFileStorageManager, MinioCloudFileStorageManager>(se
 }));  
 
 ```
+
+### Behaviour
+
+- Folders are key prefixes. A listing returns one level: the files and the subfolders directly under the folder.
+- Deleting a folder removes every object under its prefix, in batches; a failed batch raises an `IOException`. The storage root cannot be deleted, moved or overwritten.
+- The bucket is created on the first write; reads and listings report a missing bucket as not found.
+- `GetDownloadUrl` returns a presigned GET URL. The validity is capped at 7 days (the S3 maximum), and the link points at `HostAndPort`, so use an address the link's recipients can reach.
+- `HostAndPort` may carry a scheme: `https://host:9000` connects over HTTPS and `http://host:9000` over HTTP, whatever `UseSSL` says. Without a scheme `UseSSL` decides.
+- `UseSSL` defaults to `false` for compatibility; set it to `true` (or use an `https://` address) in production.

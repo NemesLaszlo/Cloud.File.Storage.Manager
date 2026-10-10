@@ -4,7 +4,15 @@ namespace Cloud.File.Storage.Manager.Minio
 {
     public class MinioCloudFileStorageManagerOptions : FileProviderOptions
     {
+        /// <summary>
+        /// The endpoint as host[:port], optionally prefixed with a scheme: https://host[:port] connects over HTTPS and
+        /// http://host[:port] over HTTP, overriding <see cref="UseSSL"/>; without a scheme <see cref="UseSSL"/> decides.
+        /// </summary>
         public string HostAndPort { get; set; }
+        /// <summary>
+        /// Connects over HTTPS when true. Defaults to false for compatibility; set it to true in production.
+        /// Ignored when <see cref="HostAndPort"/> carries a scheme.
+        /// </summary>
         public bool UseSSL { get; set; }
         public string AccessKey { get; set; }
         public string SecretKey { get; set; }
