@@ -143,7 +143,7 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
                 Assert.IsFalse(await provider.DeleteAsync("missing.txt"));
                 Assert.IsFalse(await provider.DeleteAsync("dir"));
                 Assert.IsNotNull(await provider.GetDownloadUrlAsync("missing.txt", TimeSpan.FromMinutes(5)));
-                var ex = await Assert.ThrowsExceptionAsync<RequestFailedException>(() => provider.ReadFileAsync("missing.txt"));
+                var ex = await Assert.ThrowsExactlyAsync<RequestFailedException>(() => provider.ReadFileAsync("missing.txt"));
                 Assert.AreEqual(404, ex.Status);
 
                 Assert.IsFalse((await client.ExistsAsync()).Value, "A read path created the container");
@@ -173,7 +173,7 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
 
             Assert.IsFalse((await provider.GetDirectoryContentsAsync(dir)).Exists);
             var left = 0;
-            await foreach (var _ in client.GetBlobsAsync(prefix: $"{dir}/"))
+            await foreach (var _ in client.GetBlobsAsync(new GetBlobsOptions { Prefix = $"{dir}/" }))
                 left++;
             Assert.AreEqual(0, left);
             Assert.IsTrue((await provider.GetFileInfoAsync($"{dir}2/keep.txt")).Exists, "A sibling with the same name prefix was deleted");
@@ -201,17 +201,17 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
             {
                 var provider = Azurite.CreateProvider(container);
                 await Write(provider, "keep.txt", "keep");
-                var ex = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
+                var ex = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
                 Assert.AreEqual("The provider root cannot be deleted or modified.", ex.Message);
-                await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(new string[0]));
+                await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(new string[0]));
 
                 var probe = new RootProbe(Azurite.Options(container));
-                await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => probe.DeleteAbsolute());
+                await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => probe.DeleteAbsolute());
 
                 var rooted = new RootProbe(Azurite.Options(container, "base/inner"));
                 await Write(rooted, "f.txt", "x");
-                await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => rooted.DeleteAsync(""));
-                await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => rooted.DeleteAbsolute("base", "inner"));
+                await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => rooted.DeleteAsync(""));
+                await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => rooted.DeleteAbsolute("base", "inner"));
 
                 Assert.IsTrue((await provider.GetFileInfoAsync("keep.txt")).Exists);
                 Assert.IsTrue((await rooted.GetFileInfoAsync("f.txt")).Exists);
@@ -235,7 +235,7 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
             {
                 var options = Azurite.Options("c");
                 options.Protocol = protocol;
-                Assert.ThrowsException<ArgumentException>(() => new AzureCloudFileStorageManager(options), protocol);
+                Assert.ThrowsExactly<ArgumentException>(() => new AzureCloudFileStorageManager(options), protocol);
             }
         }
 
@@ -248,7 +248,7 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
             Assert.IsNull(provider.Options.Protocol);
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("storage.example", "http://storage.example/c/a.txt")]
         [DataRow("127.0.0.1:10000/devstoreaccount1", "http://127.0.0.1:10000/devstoreaccount1/c/a.txt")]
         [DataRow("HTTP://127.0.0.1:10000/devstoreaccount1/", "http://127.0.0.1:10000/devstoreaccount1/c/a.txt")]
@@ -264,7 +264,7 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
             Assert.AreEqual(url, provider.Options.Url);
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("127.0.0.1:10000/devstoreaccount1/extra")]
         [DataRow("https://acc.blob.core.windows.net/a/b")]
         [DataRow("acc.blob.core.windows.net?sv=1")]
@@ -277,7 +277,7 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
         {
             var options = Azurite.Options("c");
             options.Url = url;
-            Assert.ThrowsException<ArgumentException>(() => new AzureCloudFileStorageManager(options));
+            Assert.ThrowsExactly<ArgumentException>(() => new AzureCloudFileStorageManager(options));
         }
 
         [TestMethod]
@@ -332,7 +332,7 @@ namespace Cloud.File.Storage.Manager.Tests.AzureBlob
             Assert.AreEqual(BlobType.Append, overwritten.Value.BlobType);
             Assert.AreEqual("new", await Read(await provider.ReadFileAsync($"{dir}/block.txt")));
 
-            var ex = await Assert.ThrowsExceptionAsync<RequestFailedException>(() =>
+            var ex = await Assert.ThrowsExactlyAsync<RequestFailedException>(() =>
                 provider.UpdateFileAsync($"{dir}/block2.txt", UpdateFileMode.Append, new MemoryStream(Encoding.UTF8.GetBytes("more"))));
             Assert.AreEqual(BlobErrorCode.InvalidBlobType.ToString(), ex.ErrorCode);
             Assert.AreEqual("block", await Read(await provider.ReadFileAsync($"{dir}/block2.txt")));

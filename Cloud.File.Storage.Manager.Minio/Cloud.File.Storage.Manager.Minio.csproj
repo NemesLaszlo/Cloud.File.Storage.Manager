@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations for Minio .NET SDK for Amazon S3 Compatible Cloud Storage like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
@@ -10,18 +10,14 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Minio, Amazon S3, S3</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>2.1.0</Version>
-    <PackageReleaseNotes>- Minio client 7.0.0, RestSharp dependency removed
-- Exact file info via StatObject, one-level folder listings
-- Folder deletes in checked batches, provider root protected against delete, move and overwrite
-- Bucket created only on writes, reads buffered in a temporary file
-- Presigned download URLs (validity capped at 7 days)
-- HostAndPort may carry an http:// or https:// scheme</PackageReleaseNotes>
+    <Version>3.0.0</Version>
+    <PackageReleaseNotes>- Targets .NET 10
+- Requires Cloud.File.Storage.Manager.Common 4.0.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.1.0" Condition="'$(UseLocalCommon)' != 'true'" />
-    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UseLocalCommon)' == 'true'" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="4.0.0" Condition="'$(UsePackagedCommon)' == 'true'" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UsePackagedCommon)' != 'true'" />
     <PackageReference Include="Minio" Version="7.0.0" />
   </ItemGroup>
 

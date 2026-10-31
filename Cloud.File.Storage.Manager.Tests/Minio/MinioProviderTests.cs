@@ -252,16 +252,16 @@ namespace Cloud.File.Storage.Manager.Tests.Minio
             var p = provider();
             await write(p, "survivor.txt");
 
-            var ex = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => p.DeleteAsync(""));
+            var ex = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => p.DeleteAsync(""));
             Assert.AreEqual("The provider root cannot be deleted or modified.", ex.Message);
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => p.DeleteAsync(new string[0]));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => p.DeleteAsync(new string[0]));
 
             var unrooted = new MinioCloudFileStorageManager(MinioTestEndpoint.Options(null));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => unrooted.DeleteAsync(""));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => unrooted.DeleteAsync(""));
 
             var probe = new RootProbe(MinioTestEndpoint.Options(root));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => probe.DeleteAbsolute(root.Split('/')));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => new RootProbe(MinioTestEndpoint.Options(null)).DeleteAbsolute());
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => probe.DeleteAbsolute(root.Split('/')));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => new RootProbe(MinioTestEndpoint.Options(null)).DeleteAbsolute());
 
             Assert.IsTrue((await p.GetFileInfoAsync("survivor.txt")).Exists);
         }
@@ -274,7 +274,7 @@ namespace Cloud.File.Storage.Manager.Tests.Minio
         {
             var p = provider();
             await write(p, "exists.txt");
-            await Assert.ThrowsExceptionAsync<ObjectNotFoundException>(() => p.ReadFileAsync("missing.txt"));
+            await Assert.ThrowsExactlyAsync<ObjectNotFoundException>(() => p.ReadFileAsync("missing.txt"));
         }
 
         [TestMethod]
@@ -310,7 +310,7 @@ namespace Cloud.File.Storage.Manager.Tests.Minio
             Assert.IsFalse((await p.GetFileInfoAsync("a.txt")).Exists);
             Assert.IsFalse((await p.GetDirectoryContentsAsync("")).Exists);
             Assert.IsFalse((await p.GetDirectoryContentsAsync("d")).Exists);
-            await Assert.ThrowsExceptionAsync<BucketNotFoundException>(() => p.ReadFileAsync("a.txt"));
+            await Assert.ThrowsExactlyAsync<BucketNotFoundException>(() => p.ReadFileAsync("a.txt"));
             Assert.IsFalse(await p.DeleteAsync("a.txt"));
             Assert.IsFalse(await client.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucket)));
 
@@ -380,7 +380,7 @@ namespace Cloud.File.Storage.Manager.Tests.Minio
     [TestClass]
     public class MinioEndpointSchemeTests
     {
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("https://minio.example:9000", false, true)]
         [DataRow("HTTPS://minio.example:9000/", false, true)]
         [DataRow("http://minio.example", true, false)]

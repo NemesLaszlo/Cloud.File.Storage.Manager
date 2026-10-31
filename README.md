@@ -2,6 +2,10 @@
 
 ## Common behaviour
 
+### Requirements
+
+Every package targets .NET 10 (`net10.0`). The versions in the table below are the first .NET 10 releases; the previous versions (Common 3.1.0 and the providers listed with it) stay on .NET 8. The public API is unchanged.
+
 Every provider implements `ICloudFileStorageManager` on top of the shared `CloudFileStorageManager<T>` base class in `Cloud.File.Storage.Manager.Common`, so the rules below apply to all of them unless a provider is named.
 
 ### Paths
@@ -40,14 +44,14 @@ Every provider implements `ICloudFileStorageManager` on top of the shared `Cloud
 
 | Package | Version |
 |---------|---------|
-| Cloud.File.Storage.Manager.Common | 3.1.0 |
-| Cloud.File.Storage.Manager.Physical | 2.1.0 |
-| Cloud.File.Storage.Manager.Minio | 2.1.0 |
-| Cloud.File.Storage.Manager.AmazonS3 | 2.1.0 |
-| Cloud.File.Storage.Manager.AzureBlob | 3.2.0 |
-| Cloud.File.Storage.Manager.GoogleCloudStorage | 1.1.0 |
-| Cloud.File.Storage.Manager.Box | 1.1.0 |
-| Cloud.File.Storage.Manager.SharePoint | 1.4.0 |
+| Cloud.File.Storage.Manager.Common | 4.0.0 |
+| Cloud.File.Storage.Manager.Physical | 3.0.0 |
+| Cloud.File.Storage.Manager.Minio | 3.0.0 |
+| Cloud.File.Storage.Manager.AmazonS3 | 3.0.0 |
+| Cloud.File.Storage.Manager.AzureBlob | 4.0.0 |
+| Cloud.File.Storage.Manager.GoogleCloudStorage | 2.0.0 |
+| Cloud.File.Storage.Manager.Box | 2.0.0 |
+| Cloud.File.Storage.Manager.SharePoint | 2.0.0 |
 
 ## Azure Blob Storage
 
@@ -84,6 +88,8 @@ services.AddSingleton<ICloudFileStorageManager, AzureCloudFileStorageManager>(se
 ## Amazon S3
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Amazon S3` right now.
+
+Built on the AWS SDK for .NET v4 (`AWSSDK.S3` 4.x). Checksums are computed and validated only where S3 requires them, so S3 compatible servers keep working. The SDK's own `AWS_ENDPOINT_URL_S3` environment variable points the client at another endpoint (for example LocalStack); presigned download URLs then use that endpoint's scheme.
 
 ### Configuration
 
@@ -239,6 +245,8 @@ services.AddSingleton<ICloudFileStorageManager, SharePointCloudFileStorageManage
 ## Google Cloud Storage
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Google Cloud Storage (GCS)` right now.
+
+Built on `Google.Cloud.Storage.V1` 5.x. Setting `STORAGE_EMULATOR_HOST` (for example `http://localhost:4443`) points the client at an emulator such as fake-gcs-server; signed download URLs still point at Google.
 
 ### Configuration
 

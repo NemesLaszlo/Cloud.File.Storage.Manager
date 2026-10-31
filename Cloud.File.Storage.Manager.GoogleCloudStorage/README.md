@@ -2,6 +2,8 @@
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Google Cloud Storage (GCS)` right now.
 
+Built on `Google.Cloud.Storage.V1` 5.x. Setting `STORAGE_EMULATOR_HOST` (for example `http://localhost:4443`) points the client at an emulator such as fake-gcs-server; signed download URLs still point at Google.
+
 Google Cloud Storage is a flat object store (there are no real folders, only object keys that contain `/`). This manager presents the keys as a virtual folder hierarchy, the same way the Azure Blob and Amazon S3 managers do.
 
 ### Configuration

@@ -2,6 +2,8 @@
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Amazon S3` right now.
 
+Built on the AWS SDK for .NET v4 (`AWSSDK.S3` 4.x). Checksums are computed and validated only where S3 requires them, so S3 compatible servers keep working. The SDK's own `AWS_ENDPOINT_URL_S3` environment variable points the client at another endpoint (for example LocalStack); presigned download URLs then use that endpoint's scheme.
+
 ### Configuration
 
 Let's add a section to the `appsettings.json`

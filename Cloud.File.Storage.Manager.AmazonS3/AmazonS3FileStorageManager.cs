@@ -19,7 +19,13 @@ namespace Cloud.File.Storage.Manager.AmazonS3
         public AmazonS3FileStorageManager(AmazonS3FileStorageManagerOptions options) : base(options)
         {
             AWSCredentials credentials = Options.IsAnonymus ? (AWSCredentials)new AnonymousAWSCredentials() : new BasicAWSCredentials(Options.AccessKey, Options.SecretKey);
-            Client = new AmazonS3Client(credentials, RegionEndpoint.GetBySystemName(Options.BucketRegion));
+            Client = new AmazonS3Client(credentials, new AmazonS3Config()
+            {
+                RegionEndpoint = RegionEndpoint.GetBySystemName(Options.BucketRegion),
+                // SDK v4 would otherwise add CRC32 checksums (aws-chunked uploads) that S3 compatible servers may reject
+                RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+                ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
+            });
         }
 
         private async Task<S3Object> firstObject(string prefix)
@@ -31,7 +37,7 @@ namespace Cloud.File.Storage.Manager.AmazonS3
                 Prefix = prefix,
                 MaxKeys = 1
             });
-            return response.S3Objects.FirstOrDefault();
+            return response.S3Objects?.FirstOrDefault();
         }
 
         // Absolute segments given by a caller: they must start with the root segments, the rest is validated
@@ -99,7 +105,7 @@ namespace Cloud.File.Storage.Manager.AmazonS3
                 });
                 continuationToken = results.NextContinuationToken;
 
-                foreach (var r in results.S3Objects)
+                foreach (var r in results.S3Objects ?? [])
                 {
                     var relativeParts = r.Key.Substring(dirPath.Length).Split('/');
                     if (relativeParts.Length > 1 && relativeParts[0].Length > 0 && seenDirnames.Add(relativeParts[0]))
@@ -107,10 +113,10 @@ namespace Cloud.File.Storage.Manager.AmazonS3
                     // skip folder markers and keys containing empty segments
                     if (relativeParts.Any(string.IsNullOrEmpty)) continue;
 
-                    ret.Add(new Common.FileInfo(this, true, r.Size, r.Key, fileName(r.Key), r.LastModified, false, getRelativeSegments(absolutePathSegments.Concat(relativeParts).ToArray())));
+                    ret.Add(new Common.FileInfo(this, true, r.Size ?? 0, r.Key, fileName(r.Key), r.LastModified ?? DefaultDateTime, false, getRelativeSegments(absolutePathSegments.Concat(relativeParts).ToArray())));
                 }
 
-                foreach (var p in results.CommonPrefixes)
+                foreach (var p in results.CommonPrefixes ?? [])
                 {
                     var d = p.Substring(dirPath.Length, p.Length - dirPath.Length - 1);
                     if (d.Length > 0 && seenDirnames.Add(d))
@@ -133,7 +139,7 @@ namespace Cloud.File.Storage.Manager.AmazonS3
             // an exact key is always listed first under its own prefix
             var first = await firstObject(key);
             if (first != null && first.Key == key)
-                return new Common.FileInfo(this, true, first.Size, key, fileName(key), first.LastModified, false, relativeSegments);
+                return new Common.FileInfo(this, true, first.Size ?? 0, key, fileName(key), first.LastModified ?? DefaultDateTime, false, relativeSegments);
 
             var isDirectory = first != null
                               && (first.Key.StartsWith(key + "/", StringComparison.Ordinal) || await firstObject(key + "/") != null);
@@ -174,21 +180,36 @@ namespace Cloud.File.Storage.Manager.AmazonS3
                     RequestPayer = RequestPayer.Requester
                 });
                 continuationToken = page.NextContinuationToken;
-                if (!page.S3Objects.Any()) continue;
+                if (page.S3Objects is not { Count: > 0 } objects) continue;
 
-                var ret = await Client.DeleteObjectsAsync(new DeleteObjectsRequest()
+                List<DeleteError> errors;
+                try
                 {
-                    BucketName = Options.BucketName,
-                    RequestPayer = RequestPayer.Requester,
-                    Quiet = true,
-                    Objects = page.S3Objects.Select(e => new KeyVersion() { Key = e.Key }).ToList()
-                });
-                if (ret.DeleteErrors.Any())
+                    var ret = await Client.DeleteObjectsAsync(new DeleteObjectsRequest()
+                    {
+                        BucketName = Options.BucketName,
+                        RequestPayer = RequestPayer.Requester,
+                        Quiet = true,
+                        Objects = objects.Select(e => new KeyVersion() { Key = e.Key }).ToList()
+                    });
+                    errors = ret.DeleteErrors;
+                }
+                catch (DeleteObjectsException ex) when (ex.Response?.DeleteErrors is { Count: > 0 })
+                {
+                    errors = ex.Response.DeleteErrors;
+                }
+                if (errors is { Count: > 0 })
                     throw new IOException(
-                        $"Failed to delete {ret.DeleteErrors.Count} object(s) under '{prefix}'. First error: '{ret.DeleteErrors[0].Key}' {ret.DeleteErrors[0].Code} {ret.DeleteErrors[0].Message}");
+                        $"Failed to delete {errors.Count} object(s) under '{prefix}'. First error: '{errors[0].Key}' {errors[0].Code} {errors[0].Message}");
                 deleted = true;
             } while (!string.IsNullOrEmpty(continuationToken));
             return deleted;
+        }
+
+        private bool usesHttp()
+        {
+            var url = Client.Config.ServiceURL;
+            return string.IsNullOrEmpty(url) ? Client.Config.UseHttp : url.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
         }
 
         protected override Task<string> getDownloadUrl(string[] absolutePathSegments, TimeSpan validity)
@@ -198,7 +219,9 @@ namespace Cloud.File.Storage.Manager.AmazonS3
                 BucketName = Options.BucketName,
                 Key = path(absolutePathSegments),
                 Expires = DateTime.UtcNow.Add(validity),
-                Verb = HttpVerb.GET
+                Verb = HttpVerb.GET,
+                // SDK v4 signs https unless told otherwise, whatever the endpoint's scheme
+                Protocol = usesHttp() ? Protocol.HTTP : Protocol.HTTPS
             };
             request.ResponseHeaderOverrides.ContentType = "application/octet-stream";
             return Task.FromResult(Client.GetPreSignedURL(request));

@@ -1,4 +1,4 @@
-using Cloud.File.Storage.Manager.Common;
+﻿using Cloud.File.Storage.Manager.Common;
 using Google;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
@@ -37,7 +37,12 @@ namespace Cloud.File.Storage.Manager.GoogleCloudStorage
 
             var credential = createCredential(out var applicationDefault);
             UsesApplicationDefaultCredentials = applicationDefault;
-            Client = StorageClient.Create(credential);
+            var builder = new StorageClientBuilder { Credential = credential };
+            // STORAGE_EMULATOR_HOST (for example http://localhost:4443) points the client at an emulator; otherwise production as before
+            var emulatorHost = Environment.GetEnvironmentVariable("STORAGE_EMULATOR_HOST");
+            if (!string.IsNullOrWhiteSpace(emulatorHost) && Uri.TryCreate(emulatorHost.Trim(), UriKind.Absolute, out var emulator))
+                builder.BaseUri = emulator.GetLeftPart(UriPartial.Authority) + "/storage/v1/";
+            Client = builder.Build();
             // Build the signer up front (this does no network I/O). A service account key signs
             // locally; a Workload Identity / impersonated identity signs via the IAM signBlob API
             // when GetDownloadUrlAsync is called. Only a credential that genuinely cannot sign
@@ -85,7 +90,7 @@ namespace Cloud.File.Storage.Manager.GoogleCloudStorage
             {
                 var obj = await Client.GetObjectAsync(Options.BucketName, key);
                 return new Common.FileInfo(this, true, (long)(obj.Size ?? 0), key, getFileName(key),
-                    obj.UpdatedDateTimeOffset ?? DefaultDateTime, false, getRelativeSegments(absolutePathSegments));
+                    updated(obj), false, getRelativeSegments(absolutePathSegments));
             }
             catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
             {
@@ -109,7 +114,7 @@ namespace Cloud.File.Storage.Manager.GoogleCloudStorage
                         var name = getFileName(obj.Name);
                         if (string.IsNullOrEmpty(name)) continue;
                         ret.Add(new Common.FileInfo(this, true, (long)(obj.Size ?? 0), obj.Name, name,
-                            obj.UpdatedDateTimeOffset ?? DefaultDateTime, false,
+                            updated(obj), false,
                             getRelativeSegments(absolutePathSegments.Concat(new[] { name }).ToArray())));
                     }
                 if (page.Prefixes != null)
@@ -223,6 +228,20 @@ namespace Cloud.File.Storage.Manager.GoogleCloudStorage
             // performs an IAM signBlob call; the synchronous Sign(...) overload can deadlock there.
             return await UrlSigner.SignAsync(Options.BucketName, getPath(absolutePathSegments), validity,
                 HttpMethod.Get);
+        }
+
+        // The SDK parses the timestamp strictly; an emulator may send a format it refuses, so fall back to a lenient parse
+        private DateTimeOffset updated(Google.Apis.Storage.v1.Data.Object obj)
+        {
+            try
+            {
+                return obj.UpdatedDateTimeOffset ?? DefaultDateTime;
+            }
+            catch (FormatException)
+            {
+                return DateTimeOffset.TryParse(obj.UpdatedRaw, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed) ? parsed : DefaultDateTime;
+            }
         }
 
         private string getPath(string[] absolutePathSegments)

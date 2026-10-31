@@ -89,7 +89,7 @@ namespace Cloud.File.Storage.Manager.Tests.Common
             CollectionAssert.AreEqual(new[] { "a", "b", "c.txt" }, info.PathSegments);
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("my file.txt")]
         [DataRow("árvíztűrő tükörfúrógép.txt")]
         [DataRow("日本語.txt")]
@@ -102,7 +102,7 @@ namespace Cloud.File.Storage.Manager.Tests.Common
             Assert.IsTrue(System.IO.File.Exists(Path.Combine(root, "dir", name)));
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("")]
         [DataRow(".")]
         [DataRow("..")]
@@ -121,16 +121,16 @@ namespace Cloud.File.Storage.Manager.Tests.Common
         [DataRow("a/")]
         public async Task RejectedSegments(string segment)
         {
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.GetFileInfoAsync(new[] { segment }));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync(new[] { "x", segment }));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.GetDirectoryContentsAsync(new[] { segment }));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "x", segment));
-            Assert.ThrowsException<ArgumentException>(() => provider.Delete(new[] { "x", segment }));
-            Assert.ThrowsException<ArgumentException>(() => provider.Move(new[] { "x", segment }, new[] { "y" }));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.GetFileInfoAsync(new[] { segment }));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync(new[] { "x", segment }));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.GetDirectoryContentsAsync(new[] { segment }));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "x", segment));
+            Assert.ThrowsExactly<ArgumentException>(() => provider.Delete(new[] { "x", segment }));
+            Assert.ThrowsExactly<ArgumentException>(() => provider.Move(new[] { "x", segment }, new[] { "y" }));
             Assert.IsFalse(Directory.Exists(Path.Combine(root, "x")));
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("..")]
         [DataRow("a/../../x")]
         [DataRow("a/./b")]
@@ -138,15 +138,15 @@ namespace Cloud.File.Storage.Manager.Tests.Common
         [DataRow("%2e%2e/x")]
         public async Task RejectedSubpaths(string subpath)
         {
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.GetFileInfoAsync(subpath));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.DeleteAsync(subpath));
-            Assert.ThrowsException<ArgumentException>(() => provider.ReadFile(subpath));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.GetFileInfoAsync(subpath));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.DeleteAsync(subpath));
+            Assert.ThrowsExactly<ArgumentException>(() => provider.ReadFile(subpath));
         }
 
         [TestMethod]
         public void RejectionMessageNamesOnlyTheSegment()
         {
-            var e = Assert.ThrowsException<ArgumentException>(() => provider.GetFileInfo(new[] { "secret-parent", ".." }));
+            var e = Assert.ThrowsExactly<ArgumentException>(() => provider.GetFileInfo(new[] { "secret-parent", ".." }));
             StringAssert.Contains(e.Message, "'..'");
             Assert.IsFalse(e.Message.Contains("secret-parent"));
             Assert.IsFalse(e.Message.Contains(root));
@@ -156,7 +156,7 @@ namespace Cloud.File.Storage.Manager.Tests.Common
         public async Task EmptySegmentDoesNotDeleteParent()
         {
             await provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "keep", "f.txt");
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.DeleteAsync(new[] { "keep", "" }));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.DeleteAsync(new[] { "keep", "" }));
             Assert.IsTrue(System.IO.File.Exists(Path.Combine(root, "keep", "f.txt")));
         }
 
@@ -164,13 +164,13 @@ namespace Cloud.File.Storage.Manager.Tests.Common
         public async Task RootDeleteIsRefused()
         {
             await provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "f.txt");
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync("/"));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(new string[0]));
-            Assert.ThrowsException<InvalidOperationException>(() => provider.Delete(""));
-            Assert.ThrowsException<InvalidOperationException>(() => provider.Delete(new string[0]));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync("/"));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(new string[0]));
+            Assert.ThrowsExactly<InvalidOperationException>(() => provider.Delete(""));
+            Assert.ThrowsExactly<InvalidOperationException>(() => provider.Delete(new string[0]));
             var rootInfo = await provider.GetFileInfoAsync("");
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(rootInfo));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(rootInfo));
             Assert.IsTrue(System.IO.File.Exists(Path.Combine(root, "f.txt")));
         }
 
@@ -178,14 +178,14 @@ namespace Cloud.File.Storage.Manager.Tests.Common
         public async Task RootMoveAndUpdateAreRefused()
         {
             await provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "f.txt");
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.MoveAsync("", "moved"));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.MoveAsync("f.txt", ""));
-            Assert.ThrowsException<InvalidOperationException>(() => provider.Move("", "moved"));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.MoveAsync("", "moved"));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.MoveAsync("f.txt", ""));
+            Assert.ThrowsExactly<InvalidOperationException>(() => provider.Move("", "moved"));
             var info = await provider.GetFileInfoAsync("f.txt");
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.MoveAsync(info, new string[0]));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.UpdateFileAsync("", UpdateFileMode.Overwrite, Content()));
-            Assert.ThrowsException<InvalidOperationException>(() => provider.UpdateFile(Content(), UpdateFileMode.Append, new string[0]));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.CreateLocalFileStreamAsync(false, ""));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.MoveAsync(info, new string[0]));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.UpdateFileAsync("", UpdateFileMode.Overwrite, Content()));
+            Assert.ThrowsExactly<InvalidOperationException>(() => provider.UpdateFile(Content(), UpdateFileMode.Append, new string[0]));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.CreateLocalFileStreamAsync(false, ""));
             Assert.IsTrue(System.IO.File.Exists(Path.Combine(root, "f.txt")));
             Assert.IsFalse(Directory.Exists(Path.Combine(root, "moved")));
         }
@@ -193,13 +193,13 @@ namespace Cloud.File.Storage.Manager.Tests.Common
         [TestMethod]
         public async Task ZeroSegmentReadAndDownloadUrlAreRefused()
         {
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync(""));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync(new string[0]));
-            Assert.ThrowsException<ArgumentException>(() => provider.ReadFile("/"));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.CreateLocalFileStreamAsync(true, ""));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.GetDownloadUrlAsync("", TimeSpan.FromMinutes(1)));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync(""));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync(new string[0]));
+            Assert.ThrowsExactly<ArgumentException>(() => provider.ReadFile("/"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.CreateLocalFileStreamAsync(true, ""));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.GetDownloadUrlAsync("", TimeSpan.FromMinutes(1)));
             var rootInfo = await provider.GetFileInfoAsync("");
-            Assert.ThrowsException<ArgumentException>(() => provider.GetDownloadUrl(rootInfo, TimeSpan.FromMinutes(1)));
+            Assert.ThrowsExactly<ArgumentException>(() => provider.GetDownloadUrl(rootInfo, TimeSpan.FromMinutes(1)));
         }
 
         [TestMethod]
@@ -260,7 +260,7 @@ namespace Cloud.File.Storage.Manager.Tests.Common
             var owner = new MemoryProvider("base");
             var other = new MemoryProvider("base");
             var stream = await owner.CreateLocalFileStreamAsync(false, "f.txt");
-            var ex = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => other.OnLocalFileStreamDisposingAsync(stream));
+            var ex = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => other.OnLocalFileStreamDisposingAsync(stream));
             Assert.AreEqual("The local file stream belongs to another provider.", ex.Message);
             Assert.AreEqual(0, other.Files.Count);
             await stream.DisposeAsync();
@@ -272,9 +272,9 @@ namespace Cloud.File.Storage.Manager.Tests.Common
         {
             var memory = new MemoryProvider("base");
             foreach (var target in new[] { new[] { "other", "f.txt" }, new[] { "f.txt" }, new string[0], new[] { "BASE", "f.txt" }, new[] { "base", "..", "f.txt" }, new[] { "base", "a%2F..%2Fb" } })
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => new LocalFileStream(Content(), memory, false, target).DisposeAsync(), string.Join("/", target));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => new LocalFileStream(Content(), memory, false, new[] { "base" }).DisposeAsync());
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => new LocalFileStream(Content(), memory, false, null).DisposeAsync());
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => new LocalFileStream(Content(), memory, false, target).DisposeAsync(), string.Join("/", target));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => new LocalFileStream(Content(), memory, false, new[] { "base" }).DisposeAsync());
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => new LocalFileStream(Content(), memory, false, null).DisposeAsync());
             await new LocalFileStream(Content(), memory, true, new[] { "other", "f.txt" }).DisposeAsync();
             Assert.AreEqual(0, memory.Files.Count);
         }

@@ -113,7 +113,7 @@ namespace Cloud.File.Storage.Manager.AzureBlob
             var found = false;
             try
             {
-                await foreach (var item in Container.GetBlobsByHierarchyAsync(delimiter: "/", prefix: prefix))
+                await foreach (var item in Container.GetBlobsByHierarchyAsync(new GetBlobsByHierarchyOptions { Delimiter = "/", Prefix = prefix }))
                 {
                     found = true;
                     if (item.IsPrefix)
@@ -211,7 +211,7 @@ namespace Cloud.File.Storage.Manager.AzureBlob
                 if (await file.DeleteIfExistsAsync())
                     return true;
                 var deleted = false;
-                await foreach (var page in Container.GetBlobsAsync(prefix: getDirPrefix(absolutePathSegments)).AsPages(pageSizeHint: DeletePageSize))
+                await foreach (var page in Container.GetBlobsAsync(new GetBlobsOptions { Prefix = getDirPrefix(absolutePathSegments) }).AsPages(pageSizeHint: DeletePageSize))
                 {
                     var blobs = page.Values;
                     var results = new bool[blobs.Count];

@@ -86,7 +86,7 @@ namespace Cloud.File.Storage.Manager.Tests
                     Prefix = prefix,
                     ContinuationToken = token
                 });
-                count += page.S3Objects.Count;
+                count += page.S3Objects?.Count ?? 0;
                 token = page.NextContinuationToken;
             } while (!string.IsNullOrEmpty(token));
             return count;
@@ -104,7 +104,7 @@ namespace Cloud.File.Storage.Manager.Tests
                     ContinuationToken = token
                 });
                 token = page.NextContinuationToken;
-                if (page.S3Objects.Count > 0)
+                if (page.S3Objects is { Count: > 0 })
                     await client.DeleteObjectsAsync(new DeleteObjectsRequest()
                     {
                         BucketName = LocalStackS3.BucketName,
@@ -345,10 +345,10 @@ namespace Cloud.File.Storage.Manager.Tests
 
 #pragma warning disable CS0618
                 // Binds to ReadFileAsync(versionId, absolutePathSegments); "file.txt" is not under the root, so it throws
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync("dir", "file.txt"));
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync(null, outside));
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync(null, rootDir, "..", outside));
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync(null, rootDir));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync("dir", "file.txt"));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync(null, outside));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync(null, rootDir, "..", outside));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync(null, rootDir));
                 using (var reader = new StreamReader(await provider.ReadFileAsync(null, rootDir, "dir", "file.txt")))
                     Assert.AreEqual("inside", await reader.ReadToEndAsync());
 #pragma warning restore CS0618
@@ -357,12 +357,12 @@ namespace Cloud.File.Storage.Manager.Tests
                     Assert.AreEqual("inside", await reader.ReadToEndAsync());
                 using (var reader = new StreamReader(await provider.ReadFileVersionAsync("", "dir/file.txt")))
                     Assert.AreEqual("inside", await reader.ReadToEndAsync());
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileVersionAsync(null));
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileVersionAsync(null, "..", outside));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileVersionAsync(null));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileVersionAsync(null, "..", outside));
 
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.EnumerateObjects(new string[0], true));
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.EnumerateObjects(new[] { outside }, false));
-                await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.EnumerateObjects(new[] { rootDir, ".." }, true));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.EnumerateObjects(new string[0], true));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.EnumerateObjects(new[] { outside }, false));
+                await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.EnumerateObjects(new[] { rootDir, ".." }, true));
                 var listed = await provider.EnumerateObjects(new[] { rootDir }, true);
                 CollectionAssert.AreEqual(new[] { "dir", "file.txt" }, ((FileInfo)listed.Single(e => !e.IsDirectory)).PathSegments);
             }
@@ -386,12 +386,12 @@ namespace Cloud.File.Storage.Manager.Tests
 
                 foreach (var provider in new[] { noRoot, withRoot })
                 {
-                    await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
-                    await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(new string[0]));
+                    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
+                    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(new string[0]));
                 }
 
-                await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => new RootGuardProbe(LocalStackS3.Options(null)).DeleteAbsolute());
-                await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => new RootGuardProbe(LocalStackS3.Options(rootDir)).DeleteAbsolute(rootDir));
+                await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => new RootGuardProbe(LocalStackS3.Options(null)).DeleteAbsolute());
+                await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => new RootGuardProbe(LocalStackS3.Options(rootDir)).DeleteAbsolute(rootDir));
 
                 Assert.IsTrue((await withRoot.GetFileInfoAsync("keep.txt")).Exists, "Content under the root was deleted");
             }

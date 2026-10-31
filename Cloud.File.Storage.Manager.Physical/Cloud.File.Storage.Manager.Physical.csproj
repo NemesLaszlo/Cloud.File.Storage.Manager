@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations for Physical Storage like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
@@ -10,19 +10,16 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>CloudStorage, Storage, FileOperations, Physical, PhysicalStorage</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>2.1.0</Version>
-    <PackageReleaseNotes>- Reading a missing file throws FileNotFoundException instead of creating an empty file
-- Paths are kept inside the root directory; names with a colon, Windows device names and names ending in a dot or space are rejected
-- Symbolic links and junctions below the root are refused unless AllowLinks is set
-- Writeable local file streams no longer try to re-upload into their own file on dispose
-- Move creates the target folder
-- Update Cloud.File.Storage.Manager.Common 3.0.0 -&gt; 3.1.0</PackageReleaseNotes>
+    <Version>3.0.0</Version>
+    <PackageReleaseNotes>- Targets .NET 10
+- Microsoft.Extensions.FileProviders.Physical 10.0.14
+- Requires Cloud.File.Storage.Manager.Common 4.0.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.1.0" Condition="'$(UseLocalCommon)' != 'true'" />
-    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UseLocalCommon)' == 'true'" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="8.0.0" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="4.0.0" Condition="'$(UsePackagedCommon)' == 'true'" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UsePackagedCommon)' != 'true'" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup>

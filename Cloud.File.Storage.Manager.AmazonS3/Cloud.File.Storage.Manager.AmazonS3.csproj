@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations for Amazon S3 like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
@@ -10,19 +10,17 @@
     <RepositoryUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</RepositoryUrl>
     <PackageTags>CloudStorage, Storage, FileOperations, Amazon, Amazon S3, S3</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>2.1.0</Version>
-    <PackageReleaseNotes>- Exact file info via a single listing, no GetObject or ListVersions permission needed
-- One-level folder listings with folder prefixes
-- Folder deletes in pages of 1000 keys, failed keys raise an IOException
-- Delete returns false when nothing was found, provider root protected against delete, move and overwrite
-- ReadFileVersionAsync for versioned reads with root-relative paths, ReadFileAsync(versionId, ...) obsolete and kept under the root
-- Update Cloud.File.Storage.Manager.Common 3.0.0 -&gt; 3.1.0</PackageReleaseNotes>
+    <Version>3.0.0</Version>
+    <PackageReleaseNotes>- Targets .NET 10, AWS SDK for .NET v4 (AWSSDK.S3 4.0.104.8)
+- Checksums are computed and validated only where S3 requires them, so S3 compatible servers keep working
+- Presigned download URLs use http when the endpoint is http
+- Requires Cloud.File.Storage.Manager.Common 4.0.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.S3" Version="3.7.305.22" />
-    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="3.1.0" Condition="'$(UseLocalCommon)' != 'true'" />
-    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UseLocalCommon)' == 'true'" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.8" />
+    <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="4.0.0" Condition="'$(UsePackagedCommon)' == 'true'" />
+    <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UsePackagedCommon)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>

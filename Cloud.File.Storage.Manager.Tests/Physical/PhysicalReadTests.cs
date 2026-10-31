@@ -46,9 +46,9 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
         [TestMethod]
         public async Task MissingReadThrowsAndCreatesNothing()
         {
-            await Assert.ThrowsExceptionAsync<FileNotFoundException>(() => provider.ReadFileAsync("missing", "file.txt"));
-            Assert.ThrowsException<FileNotFoundException>(() => provider.ReadFile("missing/file.txt"));
-            await Assert.ThrowsExceptionAsync<FileNotFoundException>(() => provider.ReadFileAsync("file.txt"));
+            await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => provider.ReadFileAsync("missing", "file.txt"));
+            Assert.ThrowsExactly<FileNotFoundException>(() => provider.ReadFile("missing/file.txt"));
+            await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => provider.ReadFileAsync("file.txt"));
             Assert.IsFalse(Directory.Exists(Path.Combine(root, "missing")));
             Assert.IsFalse(System.IO.File.Exists(Path.Combine(root, "file.txt")));
         }
@@ -56,7 +56,7 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
         [TestMethod]
         public async Task MissingReadOnlyLocalStreamThrowsAndCreatesNothing()
         {
-            await Assert.ThrowsExceptionAsync<FileNotFoundException>(() => provider.CreateLocalFileStreamAsync(true, "missing/file.txt"));
+            await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => provider.CreateLocalFileStreamAsync(true, "missing/file.txt"));
             Assert.IsFalse(Directory.Exists(Path.Combine(root, "missing")));
         }
 
@@ -64,7 +64,7 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
         public async Task DirectoryReadThrows()
         {
             Directory.CreateDirectory(Path.Combine(root, "dir"));
-            await Assert.ThrowsExceptionAsync<FileNotFoundException>(() => provider.ReadFileAsync("dir"));
+            await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => provider.ReadFileAsync("dir"));
         }
 
         [TestMethod]
@@ -104,9 +104,9 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
         public async Task DeleteOfRootIsRefused()
         {
             await provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "file.txt");
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAbsoluteAsync(provider.Absolute()));
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => provider.DeleteAbsoluteAsync(provider.Absolute("sub", "..")));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAsync(""));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAbsoluteAsync(provider.Absolute()));
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => provider.DeleteAbsoluteAsync(provider.Absolute("sub", "..")));
             Assert.IsTrue(System.IO.File.Exists(Path.Combine(root, "file.txt")));
         }
 
@@ -115,7 +115,7 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
         {
             await provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "file.txt");
             Assert.IsFalse(provider.SupportsDownloadUrl);
-            await Assert.ThrowsExceptionAsync<NotSupportedException>(() => provider.GetDownloadUrlAsync("file.txt", TimeSpan.FromHours(1)));
+            await Assert.ThrowsExactlyAsync<NotSupportedException>(() => provider.GetDownloadUrlAsync("file.txt", TimeSpan.FromHours(1)));
         }
 
         [TestMethod]
@@ -123,19 +123,19 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
         {
             var outside = Path.Combine(Path.GetDirectoryName(root), "outside.txt");
             System.IO.File.WriteAllBytes(outside, new byte[] { 1 });
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadAbsoluteAsync(provider.Absolute("..", "outside.txt")));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.DeleteAbsoluteAsync(provider.Absolute("..", "outside.txt")));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.DeleteAbsoluteAsync(provider.Absolute("..")));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.UpdateAbsoluteAsync(Content(), provider.Absolute("..", "escaped.txt")));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ListAbsoluteAsync(provider.Absolute("..")));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadAbsoluteAsync(provider.Absolute("..", Path.GetFileName(root) + "-sibling", "f.txt")));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadAbsoluteAsync(provider.Absolute("..", "outside.txt")));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.DeleteAbsoluteAsync(provider.Absolute("..", "outside.txt")));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.DeleteAbsoluteAsync(provider.Absolute("..")));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.UpdateAbsoluteAsync(Content(), provider.Absolute("..", "escaped.txt")));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ListAbsoluteAsync(provider.Absolute("..")));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadAbsoluteAsync(provider.Absolute("..", Path.GetFileName(root) + "-sibling", "f.txt")));
             Assert.IsTrue(System.IO.File.Exists(outside));
             Assert.IsFalse(System.IO.File.Exists(Path.Combine(Path.GetDirectoryName(root), "escaped.txt")));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync("..", "outside.txt"));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync("c:", "outside.txt"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync("..", "outside.txt"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync("c:", "outside.txt"));
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("file.")]
         [DataRow("file ")]
         [DataRow("file%2E")]
@@ -151,13 +151,13 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
         [DataRow("lpt\u00B3.txt")]
         public async Task ReservedAndTrailingNamesAreRejected(string name)
         {
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "dir", name));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.GetFileInfoAsync(name));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync(name, "f.txt"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "dir", name));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.GetFileInfoAsync(name));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync(name, "f.txt"));
             Assert.IsFalse(Directory.Exists(Path.Combine(root, "dir")));
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("CONSOLE.txt")]
         [DataRow("com10")]
         [DataRow("nullable.txt")]
@@ -189,12 +189,12 @@ namespace Cloud.File.Storage.Manager.Tests.Physical
                 Assert.Inconclusive($"Symbolic links cannot be created: {e.Message}");
             }
 
-            var ex = await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync("sub", "link", "f.txt"));
+            var ex = await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync("sub", "link", "f.txt"));
             Assert.AreEqual("Links inside the provider root are not allowed.", ex.Message);
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.ReadFileAsync("file-link.txt"));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "sub", "link", "new.txt"));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.GetDirectoryContentsAsync("sub", "link"));
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() => provider.DeleteAsync("sub", "link"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.ReadFileAsync("file-link.txt"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.UpdateFileAsync(Content(), UpdateFileMode.Overwrite, "sub", "link", "new.txt"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.GetDirectoryContentsAsync("sub", "link"));
+            await Assert.ThrowsExactlyAsync<ArgumentException>(() => provider.DeleteAsync("sub", "link"));
             Assert.IsFalse(System.IO.File.Exists(Path.Combine(target, "new.txt")));
             Assert.IsTrue(System.IO.File.Exists(Path.Combine(target, "f.txt")));
             Assert.IsTrue((await provider.GetDirectoryContentsAsync("sub")).Exists);
