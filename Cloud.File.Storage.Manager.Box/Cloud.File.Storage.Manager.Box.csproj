@@ -3,20 +3,22 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>2.0.0</Version>
+    <Version>3.0.0</Version>
     <Authors>NemesLaszlo</Authors>
     <Description>Provides complete implementation to handle easily cloud file storage operations for Box like get informations about files, reading, downloadURL generation, file update, file move and delete.</Description>
     <PackageProjectUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/NemesLaszlo/Cloud.File.Storage.Manager</RepositoryUrl>
     <PackageTags>CloudStorage, Storage, FileOperations, Box-Files, Box-Storage, Box</PackageTags>
-    <PackageReleaseNotes>- Targets .NET 10; Box.V2.Core stays on 5.8.0
+    <PackageReleaseNotes>- Targets .NET 10, Box .NET SDK Gen (Box.V2.Core 10.19.0); the SDK renews the access token itself
+- Box API failures are reported as IOException with the BoxSdkException inside (was BoxException)
+- Folder entries in listings report the Unix epoch as LastModified; file info of a folder still asks Box for its timestamp
 - Requires Cloud.File.Storage.Manager.Common 4.0.0</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Box.V2.Core" Version="5.8.0" />
+    <PackageReference Include="Box.V2.Core" Version="10.19.0" />
     <PackageReference Include="Cloud.File.Storage.Manager.Common" Version="4.0.0" Condition="'$(UsePackagedCommon)' == 'true'" />
     <ProjectReference Include="..\Cloud.File.Storage.Manager.Common\Cloud.File.Storage.Manager.Common.csproj" Condition="'$(UsePackagedCommon)' != 'true'" />
   </ItemGroup>

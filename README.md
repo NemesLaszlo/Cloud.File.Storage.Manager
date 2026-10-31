@@ -50,8 +50,8 @@ Every provider implements `ICloudFileStorageManager` on top of the shared `Cloud
 | Cloud.File.Storage.Manager.AmazonS3 | 3.0.0 |
 | Cloud.File.Storage.Manager.AzureBlob | 4.0.0 |
 | Cloud.File.Storage.Manager.GoogleCloudStorage | 2.0.0 |
-| Cloud.File.Storage.Manager.Box | 2.0.0 |
-| Cloud.File.Storage.Manager.SharePoint | 2.0.0 |
+| Cloud.File.Storage.Manager.Box | 3.0.0 |
+| Cloud.File.Storage.Manager.SharePoint | 3.0.0 |
 
 ## Azure Blob Storage
 
@@ -176,6 +176,8 @@ services.AddSingleton<ICloudFileStorageManager, PhysicalFileStorage>(services =>
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Box` right now.
 
+Built on the Box .NET SDK Gen (`Box.V2.Core` 10.x, namespace `Box.Sdk.Gen`), which renews the access token itself. Box API errors are thrown as `IOException` with the SDK's `BoxSdkException` as the inner exception.
+
 ### Configuration
 
 Let's add a section to the `appsettings.json`
@@ -210,6 +212,8 @@ services.AddSingleton<ICloudFileStorageManager, BoxCloudFileStorageManager>(serv
 ## SharePoint
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `SharePoint` right now.
+
+Built on Microsoft Graph SDK 6 (`Microsoft.Graph` 6.x, `Microsoft.Graph.Core` 4.x). An application that also uses `Microsoft.Graph` directly is moved to the 6.x line by this dependency.
 
 ### Configuration
 

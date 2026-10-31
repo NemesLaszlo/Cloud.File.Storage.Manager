@@ -2,6 +2,8 @@
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `Box` right now.
 
+Built on the Box .NET SDK Gen (`Box.V2.Core` 10.x, namespace `Box.Sdk.Gen`), which renews the access token itself. Box API errors are thrown as `IOException` with the SDK's `BoxSdkException` as the inner exception.
+
 ### Configuration
 
 Let's add a section to the `appsettings.json`

@@ -2,6 +2,8 @@
 
 Provides complete implementation to handle easily cloud file storage operations like get informations about files, reading, downloadURL generation, file update, file move and delete. Primarily for `SharePoint` right now.
 
+Built on Microsoft Graph SDK 6 (`Microsoft.Graph` 6.x, `Microsoft.Graph.Core` 4.x). An application that also uses `Microsoft.Graph` directly is moved to the 6.x line by this dependency.
+
 ### Configuration
 
 Let's add a section to the `appsettings.json`
